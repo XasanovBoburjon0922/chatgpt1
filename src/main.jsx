@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client"
 import { ConfigProvider, theme } from "antd"
 import App from "./App.jsx"
 import "./index.css"
+import { BrowserRouter } from "react-router-dom"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -16,7 +17,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         },
       }}
     >
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </ConfigProvider>
   </React.StrictMode>,
 )
