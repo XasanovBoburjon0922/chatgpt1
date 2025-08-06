@@ -96,7 +96,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
-  const [userId] = useState(localStorage.getItem("user_id")); // Retrieve user_id from local storage
+  const [userId] = useState(localStorage.getItem("user_id")); 
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
 

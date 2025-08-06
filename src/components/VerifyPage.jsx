@@ -41,7 +41,19 @@ function VerifyPage() {
     }
   }, [code, isVerifying]);
 
-  const handleChange = (index, value) => {
+  const handleChange = (index, value, event) => {
+    if (event.type === "paste") {
+      const pastedData = event.clipboardData.getData("text").replace(/\D/g, "");
+      if (pastedData.length === 6) {
+        setCode(pastedData.split(""));
+        document.getElementById(`code-input-5`)?.focus();
+        return;
+      } else {
+        message.error("Iltimos, 6 raqamli kodni kiriting!");
+        return;
+      }
+    }
+
     const newCode = [...code];
     newCode[index] = value.replace(/\D/g, "").slice(0, 1);
     setCode(newCode);
@@ -55,6 +67,11 @@ function VerifyPage() {
     if (e.key === "Backspace" && !code[index] && index > 0) {
       document.getElementById(`code-input-${index - 1}`)?.focus();
     }
+  };
+
+  const handlePaste = (event, index) => {
+    event.preventDefault();
+    handleChange(index, event.clipboardData.getData("text"), event);
   };
 
   const handleTelegramRedirect = () => {
@@ -89,11 +106,8 @@ function VerifyPage() {
 
       if (response.status === 200) {
         if (response.data && response.data.token) {
-          // Store user_id in local storage
           localStorage.setItem("user_id", response.data.userInfo.id);
-          // Check if full_name is empty
           if (!response.data.userInfo.full_name) {
-            setIsModalVisible(true); // Show modal to enter full name
           } else {
             login(response.data.userInfo, response.data.token);
             message.success("Muvaffaqiyatli kirildi!");
@@ -173,8 +187,9 @@ function VerifyPage() {
                 key={index}
                 id={`code-input-${index}`}
                 value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
+                onChange={(e) => handleChange(index, e.target.value, e)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={(e) => handlePaste(e, index)}
                 maxLength={1}
                 className="!bg-gray-700 !border-gray-600 !font-bold !text-white !text-lg text-center"
                 size="large"
