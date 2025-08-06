@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Input, Button, Typography, message, Modal } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
@@ -34,58 +34,12 @@ function VerifyPage() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Memoize handleVerify to prevent unnecessary re-creations
-  const handleVerify = useCallback(async () => {
-    const enteredCode = code.join("");
-    if (enteredCode.length !== 6 || isVerifying) return;
-
-    setIsVerifying(true);
-
-    try {
-      const response = await axios.post("http://31.187.74.228:8080/users/verify-code", {
-        code: parseInt(enteredCode),
-        phone_number: phoneNumber,
-      });
-
-      if (response.status === 200) {
-        if (response.data && response.data.token) {
-          localStorage.setItem("user_id", response.data.userInfo.id);
-          localStorage.setItem("access_token", response.data.token);
-          if (!response.data.userInfo.full_name) {
-            setIsModalVisible(true); // Show modal only once
-          } else {
-            login(response.data.userInfo, response.data.token);
-            message.success("Muvaffaqiyatli kirildi!");
-            navigate("/dashboard");
-          }
-        } else if (response.data.valid === false) {
-          message.error("Kod noto'g'ri yoki muddati o'tgan!");
-          setCode(["", "", "", "", "", ""]);
-        }
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-      if (error.response?.status === 400) {
-        message.error("Kod noto'g'ri yoki muddati o'tgan!");
-      } else if (error.response?.status === 429) {
-        message.error("Juda ko'p urinish. Biroz kuting.");
-      } else if (error.response?.status >= 500) {
-        message.error("Server xatoligi. Keyinroq urinib ko'ring.");
-      } else {
-        message.error("Internet aloqasini tekshiring.");
-      }
-      setCode(["", "", "", "", "", ""]);
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [code, isVerifying, phoneNumber, login, navigate]);
-
   useEffect(() => {
     const enteredCode = code.join("");
     if (enteredCode.length === 6 && !isVerifying) {
       handleVerify();
     }
-  }, [code, isVerifying, handleVerify]);
+  }, [code, isVerifying]);
 
   const handleChange = (index, value, event) => {
     if (event.type === "paste") {
@@ -138,24 +92,63 @@ function VerifyPage() {
     }
   };
 
+  const handleVerify = async () => {
+    const enteredCode = code.join("");
+    if (enteredCode.length !== 6) return;
+
+    setIsVerifying(true);
+
+    try {
+      const response = await axios.post("http://31.187.74.228:8080/users/verify-code", {
+        code: parseInt(enteredCode),
+        phone_number: phoneNumber,
+      });
+
+      if (response.status === 200) {
+        if (response.data && response.data.token) {
+          localStorage.setItem("user_id", response.data.userInfo.id);
+          if (!response.data.userInfo.full_name) {
+          } else {
+            login(response.data.userInfo, response.data.token);
+            message.success("Muvaffaqiyatli kirildi!");
+            navigate("/dashboard");
+          }
+        } else if (response.data.valid === false) {
+          message.error("Kod noto'g'ri yoki muddati o'tgan!");
+          setCode(["", "", "", "", "", ""]);
+        }
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      if (error.response?.status === 400) {
+        message.error("Kod noto'g'ri yoki muddati o'tgan!");
+      } else if (error.response?.status === 429) {
+        message.error("Juda ko'p urinish. Biroz kuting.");
+      } else if (error.response?.status >= 500) {
+        message.error("Server xatoligi. Keyinroq urinib ko'ring.");
+      } else {
+        message.error("Internet aloqasini tekshiring.");
+      }
+      setCode(["", "", "", "", "", ""]);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleModalOk = async () => {
     if (!fullName.trim()) {
       message.error("Iltimos, ismingizni kiriting!");
       return;
     }
+
     try {
-      const userId = localStorage.getItem("user_id");
-      await axios.put(`http://31.187.74.228:8080/users/update?id=${userId}`, {
+      await axios.post(`http://31.187.74.228:8080/users/update?id=${localStorage.getItem("user_id")}`, {
         full_name: fullName,
         phone_number: phoneNumber,
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
       });
       message.success("Ism muvaffaqiyatli saqlandi!");
       setIsModalVisible(false);
-      login({ id: userId, full_name: fullName, phone_number: phoneNumber }, localStorage.getItem("access_token"));
+      login({ id: localStorage.getItem("user_id"), full_name: fullName }, localStorage.getItem("access_token"));
       navigate("/dashboard");
     } catch (error) {
       console.error("Error updating full name:", error);
@@ -166,7 +159,6 @@ function VerifyPage() {
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setFullName("");
-    navigate("/login");
   };
 
   const formatTime = (seconds) => {

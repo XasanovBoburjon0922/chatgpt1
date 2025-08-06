@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Layout, Input, Button, Typography, message, Select } from "antd";
+import { Layout, Input, Button, Typography, Select, Modal } from "antd";
 import {
   PaperClipOutlined,
   SearchOutlined,
@@ -16,6 +16,8 @@ import { useAuth } from "../auth/authContext";
 import UserDropdown from "./userDropdown";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 i18n
   .use(initReactI18next)
@@ -44,6 +46,11 @@ i18n
           rateLimitError: "Siz juda ko'p so'rov yuboryapsiz. Biroz kuting.",
           serverError: "Server xatoligi yuz berdi. Keyinroq qayta urinib ko'ring.",
           networkError: "Internet aloqasini tekshiring.",
+          enterName: "Ismingizni kiriting",
+          save: "Saqlash",
+          cancel: "Bekor qilish",
+          nameRequired: "Iltimos, ismingizni kiriting!",
+          nameUpdateError: "Ismni saqlashda xatolik yuz berdi!",
         },
       },
       ru: {
@@ -69,6 +76,11 @@ i18n
           rateLimitError: "Слишком много запросов. Подождите немного.",
           serverError: "Произошла ошибка сервера. Попробуйте позже.",
           networkError: "Проверьте подключение к интернету.",
+          enterName: "Введите ваше имя",
+          save: "Сохранить",
+          cancel: "Отмена",
+          nameRequired: "Пожалуйста, введите ваше имя!",
+          nameUpdateError: "Ошибка при сохранении имени!",
         },
       },
     },
@@ -84,11 +96,11 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-const API_BASE_URL = "https://backend.amur1.uz";
+const API_BASE_URL = "http://31.187.74.228:8080";
 
 function Dashboard() {
-  const { t, i18n } = useTranslation();
-  const { isAuthenticated, user, refreshAccessToken } = useAuth();
+  const { t } = useTranslation();
+  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
   const [chatRoomId, setChatRoomId] = useState(null);
@@ -96,13 +108,22 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
-  const [userId] = useState(localStorage.getItem("user_id")); 
+  const [userId] = useState(localStorage.getItem("user_id"));
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [fullName, setFullName] = useState("");
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
+
+  // Check if full_name is empty on component mount
+  useEffect(() => {
+    if (isAuthenticated && user && !user.full_name) {
+      setIsModalVisible(true);
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const requestInterceptor = axios.interceptors.request.use(
@@ -113,9 +134,7 @@ function Dashboard() {
         }
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
     const responseInterceptor = axios.interceptors.response.use(
@@ -134,8 +153,9 @@ function Dashboard() {
         }
 
         if (error.response?.status === 429) {
-        } else if (error.response?.status >= 500) {
+          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" });
         } else if (!error.response) {
+          toast.error(t("networkError"), { theme: "dark", position: "top-center" });
         }
 
         return Promise.reject(error);
@@ -149,10 +169,10 @@ function Dashboard() {
   }, [refreshAccessToken, t]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.full_name) {
       fetchChatRooms();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -193,6 +213,7 @@ function Dashboard() {
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
       if (error.response?.status !== 401) {
+        toast.error(t("failedtofetchchatrooms"), { theme: "dark", position: "top-center" });
       }
     } finally {
       setLoading(false);
@@ -200,7 +221,7 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.full_name) {
       return;
     }
 
@@ -222,6 +243,7 @@ function Dashboard() {
     } catch (error) {
       console.error("Error fetching chat history:", error);
       if (error.response?.status !== 401) {
+        toast.error(t("failedtofetchchathistory"), { theme: "dark", position: "top-center" });
       }
     } finally {
       setLoading(false);
@@ -229,7 +251,7 @@ function Dashboard() {
   };
 
   const createChatRoom = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.full_name) {
       return;
     }
 
@@ -245,6 +267,7 @@ function Dashboard() {
     } catch (error) {
       console.error("Error creating chat room:", error);
       if (error.response?.status !== 401) {
+        toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
       }
     } finally {
       setLoading(false);
@@ -252,13 +275,15 @@ function Dashboard() {
   };
 
   const handleSend = async () => {
-    if (!message.trim()) return;
-
-    if (!isAuthenticated) {
+    if (!message.trim() || !isAuthenticated || !user?.full_name) {
+      if (!user?.full_name) {
+        setIsModalVisible(true);
+      }
       return;
     }
 
     if (!chatRoomId) {
+      toast.error(t("pleasecreatechatroom"), { theme: "dark", position: "top-center" });
       return;
     }
 
@@ -280,7 +305,10 @@ function Dashboard() {
       setNewResponse(updatedMessage);
     } catch (error) {
       console.error("Error sending message:", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
+        toast.error(error.response.data.error, { theme: "dark", position: "top-center" }); // Show API error message in ChatGPT-like toast
+      } else if (error.response?.status !== 401) {
+        toast.error(t("failedtosendmessage"), { theme: "dark", position: "top-center" });
       }
       setChatHistory((prev) => prev.slice(0, -1));
     } finally {
@@ -303,6 +331,32 @@ function Dashboard() {
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
     throw new Error("Response not received in time");
+  };
+
+  const handleModalOk = async () => {
+    if (!fullName.trim()) {
+      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    try {
+      await axios.post(`http://31.187.74.228:8080/users/update?id=${userId}`, {
+        full_name: fullName,
+        phone_number: user.phone_number,
+      });
+      toast.success(t("save"), { theme: "dark", position: "top-center" });
+      setIsModalVisible(false);
+      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
+      setFullName("");
+    } catch (error) {
+      console.error("Error updating full name:", error);
+      toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" });
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    setFullName("");
+    navigate("/login");
   };
 
   const TypingAnimation = () => (
@@ -367,6 +421,19 @@ function Dashboard() {
 
   return (
     <div className="bg-gray-900 h-screen overflow-hidden">
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false}
+        draggable={false}
+        pauseOnHover
+        theme="dark"
+        toastClassName="chatgpt-toast"
+      />
       <div className="flex justify-between items-center bg-gray-800 px-4 py-3 border-gray-700 border-b">
         <div className="flex items-center space-x-2">
           <Title level={4} className="!mb-0 !text-white">
@@ -459,15 +526,15 @@ function Dashboard() {
                 <TextArea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder={isAuthenticated ? t("askanything") : t("loginRequired")}
-                  disabled={!isAuthenticated}
+                  placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("enterName")}
+                  disabled={!isAuthenticated || !user?.full_name}
                   className="!bg-gray-700 !border-gray-600 !rounded-lg !text-white placeholder:!text-gray-400"
                   style={{
                     minHeight: "60px",
                     resize: "none",
                   }}
                   onPressEnter={(e) => {
-                    if (!e.shiftKey && isAuthenticated) {
+                    if (!e.shiftKey && isAuthenticated && user?.full_name) {
                       e.preventDefault();
                       handleSend();
                     }
@@ -479,21 +546,21 @@ function Dashboard() {
                     icon={<PaperClipOutlined />}
                     className="!p-1 !text-gray-400 hover:!text-white"
                     size="small"
-                    disabled={!isAuthenticated}
+                    disabled={!isAuthenticated || !user?.full_name}
                   />
                   <Button
                     type="text"
                     icon={<SearchOutlined />}
                     className="!p-1 !text-gray-400 hover:!text-white"
                     size="small"
-                    disabled={!isAuthenticated}
+                    disabled={!isAuthenticated || !user?.full_name}
                   />
                   <Button
                     type="text"
                     icon={<AudioOutlined />}
                     className="!p-1 !text-gray-400 hover:!text-white"
                     size="small"
-                    disabled={!isAuthenticated}
+                    disabled={!isAuthenticated || !user?.full_name}
                   />
                   <Button
                     type="primary"
@@ -501,7 +568,7 @@ function Dashboard() {
                     className="!bg-green-600 hover:!bg-green-700 !p-1 !border-green-600"
                     size="small"
                     onClick={handleSend}
-                    disabled={!message.trim() || loading || !isAuthenticated}
+                    disabled={!message.trim() || loading || !isAuthenticated || !user?.full_name}
                   />
                 </div>
               </div>
@@ -529,13 +596,13 @@ function Dashboard() {
                 type="text"
                 className="ml-2 !text-gray-300 hover:!text-white"
                 onClick={createChatRoom}
-                disabled={loading || !isAuthenticated}
+                disabled={loading || !isAuthenticated || !user?.full_name}
               >
                 {t("newchat")}
               </Button>
             </div>
             <div className="space-y-2">
-              {isAuthenticated && conversations.map((conv) => (
+              {isAuthenticated && user?.full_name && conversations.map((conv) => (
                 <div
                   key={conv.id}
                   className={`bg-gray-700 hover:bg-gray-600 p-3 rounded transition-colors cursor-pointer ${
@@ -557,6 +624,29 @@ function Dashboard() {
           </div>
         </Sider>
       </Layout>
+
+      <Modal
+        title={t("enterName")}
+        open={isModalVisible}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        okText={t("save")}
+        cancelText={t("cancel")}
+        okButtonProps={{
+          className: "!bg-blue-600 hover:!bg-blue-700",
+        }}
+        cancelButtonProps={{
+          className: "!text-gray-400 hover:!text-white",
+        }}
+      >
+        <Input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder={t("enterName")}
+          className="!bg-gray-700 !border-gray-600 !text-white placeholder:!text-gray-400"
+          size="large"
+        />
+      </Modal>
     </div>
   );
 }

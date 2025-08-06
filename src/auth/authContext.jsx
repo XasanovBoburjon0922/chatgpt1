@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error('No refresh token available');
       }
 
-      const response = await axios.post('https://backend.amur1.uz/auth/refresh', {
+      const response = await axios.post('http://31.187.74.228:8080/auth/refresh', {
         refresh_token: refreshToken
       });
 
