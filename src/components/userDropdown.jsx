@@ -94,7 +94,7 @@ const UserDropdown = () => {
         >
           {getInitials(user?.full_name)}
         </Avatar>
-        <Text className="font-medium !text-white text-sm">
+        <Text className="hidden md:flex font-medium !text-white text-sm">
           {user?.full_name || 'User'}
         </Text>
       </div>

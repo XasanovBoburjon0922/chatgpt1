@@ -18,7 +18,6 @@ body {
 #root {
   min-height: 100vh;
 }
-/* Add this to your App.css or index.css */
 
 .user-dropdown .ant-dropdown-menu {
   background-color: #374151 !important;
@@ -45,7 +44,6 @@ body {
   margin-right: 8px !important;
 }
 
-/* Custom loading spinner */
 .loading-spinner {
   display: inline-block;
   width: 20px;
@@ -61,7 +59,6 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Verification code input animations */
 .code-input-focus {
   box-shadow: 0 0 0 2px #3b82f6 !important;
   border-color: #3b82f6 !important;
@@ -72,12 +69,10 @@ body {
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
 }
 
-/* Smooth transitions for all interactive elements */
 .transition-all {
   transition: all 0.2s ease-in-out;
 }
 
-/* Custom scrollbar for chat history */
 .chat-history::-webkit-scrollbar {
   width: 6px;
 }
@@ -96,7 +91,6 @@ body {
   background: #9ca3af;
 }
 
-/* Message animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -112,7 +106,6 @@ body {
   animation: fadeInUp 0.3s ease-out;
 }
 
-/* Typing animation improvements */
 @keyframes bounce {
   0%, 60%, 100% {
     transform: translateY(0);
@@ -129,7 +122,6 @@ body {
 .typing-dot:nth-child(1) { animation-delay: -0.32s; }
 .typing-dot:nth-child(2) { animation-delay: -0.16s; }
 
-/* Button hover effects */
 .btn-hover-effect {
   position: relative;
   overflow: hidden;
@@ -151,7 +143,6 @@ body {
   left: 100%;
 }
 
-/* Error message styling */
 .error-message {
   background-color: #fef2f2;
   border: 1px solid #fecaca;
@@ -172,39 +163,10 @@ body {
   margin: 8px 0;
 }
 .Toastify__toast--error {
-  background-color: #1f2937; /* Matches bg-gray-800 */
-  color: #f3f4f6; /* Matches text-gray-200 */
+  background-color: #1f2937; 
+  color: #f3f4f6; 
 }
 .Toastify__toast--success {
-  background-color: #15803d; /* Matches bg-green-600 */
+  background-color: #15803d;
   color: #f3f4f6;
-}
-/* App.css */
-.chatgpt-toast {
-  background-color: #1f2937 !important; /* bg-gray-800 */
-  color: #ffffff !important; /* white text */
-  border-radius: 8px !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid #ef4444 !important; /* red-500 for error accent */
-}
-
-.chatgpt-toast .Toastify__toast-body {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.chatgpt-toast .Toastify__close-button {
-  color: #ffffff !important;
-  opacity: 0.7 !important;
-}
-
-.chatgpt-toast .Toastify__close-button:hover {
-  opacity: 1 !important;
-}
-
-.Toastify__toast--success {
-  border: 1px solid #10b981 !important; /* green-500 for success accent */
 }

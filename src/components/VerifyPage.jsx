@@ -34,7 +34,6 @@ function VerifyPage() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Memoize handleVerify to prevent unnecessary re-creations
   const handleVerify = useCallback(async () => {
     const enteredCode = code.join("");
     if (enteredCode.length !== 6 || isVerifying) return;
@@ -42,7 +41,7 @@ function VerifyPage() {
     setIsVerifying(true);
 
     try {
-      const response = await axios.post("http://31.187.74.228:8080/users/verify-code", {
+      const response = await axios.post("https://imzo-ai.uzjoylar.uz/users/verify-code", {
         code: parseInt(enteredCode),
         phone_number: phoneNumber,
       });
@@ -52,7 +51,7 @@ function VerifyPage() {
           localStorage.setItem("user_id", response.data.userInfo.id);
           localStorage.setItem("access_token", response.data.token);
           if (!response.data.userInfo.full_name) {
-            setIsModalVisible(true); // Show modal only once
+            setIsModalVisible(true);
           } else {
             login(response.data.userInfo, response.data.token);
             message.success("Muvaffaqiyatli kirildi!");
@@ -128,7 +127,7 @@ function VerifyPage() {
     try {
       setTimer(60);
       setCode(["", "", "", "", "", ""]);
-      await axios.post("http://31.187.74.228:8080/users/resend-code", {
+      await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
         phone_number: phoneNumber,
       });
       message.success("Kod qayta yuborildi");
@@ -145,7 +144,7 @@ function VerifyPage() {
     }
     try {
       const userId = localStorage.getItem("user_id");
-      await axios.put(`http://31.187.74.228:8080/users/update?id=${userId}`, {
+      await axios.put(`https://imzo-ai.uzjoylar.uz/users/update?id=${userId}`, {
         full_name: fullName,
         phone_number: phoneNumber,
       }, {
