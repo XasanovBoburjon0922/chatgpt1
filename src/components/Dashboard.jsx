@@ -37,8 +37,6 @@ i18n.use(initReactI18next).init({
         privacy: "Maxfiylik siyosati",
         agree: "Imzo Ai bilan xabar yuborish orqali siz bizning",
         loginRequired: "Savollar berish uchun avval login qiling",
-        failedtofetchchatrooms: "Chat xonalarini yuklashda xatolik",
-        failedtofetchchathistory: "Chat tarixini yuklashda xatolik",
         failedtocreatechatroom: "Yangi chat yaratishda xatolik",
         pleasecreatechatroom: "Iltimos yangi chat yarating",
         failedtosendmessage: "Xabar yuborishda xatolik",
@@ -67,8 +65,6 @@ i18n.use(initReactI18next).init({
         privacy: "Политика конфиденциальности",
         agree: "Отправляя сообщение Imzo Ai, вы соглашаетесь с нашими",
         loginRequired: "Для отправки вопросов сначала войдите в систему",
-        failedtofetchchatrooms: "Ошибка при загрузке чат-комнат",
-        failedtofetchchathistory: "Ошибка при загрузке истории чата",
         failedtocreatechatroom: "Ошибка при создании нового чата",
         pleasecreatechatroom: "Пожалуйста, создайте новый чат",
         failedtosendmessage: "Ошибка при отправке сообщения",
@@ -247,9 +243,6 @@ function Dashboard() {
       setNewResponse(null);
     } catch (error) {
       console.error("Error fetching chat history:", error);
-      if (error.response?.status !== 401) {
-        toast.error(t("failedtofetchchathistory"), { theme: "dark", position: "top-center" });
-      }
     } finally {
       setLoading(false);
     }
