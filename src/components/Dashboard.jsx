@@ -220,10 +220,7 @@ function Dashboard() {
       setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
-      if (error.response?.status !== 401) {
-        toast.error(t("failedtofetchchatrooms"), { theme: "dark", position: "top-center" });
-      }
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
