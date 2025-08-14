@@ -78,6 +78,8 @@ i18n.use(initReactI18next).init({
         childInfo: "Bola haqida",
         marriageInfo: "Nikoh haqida",
         otherInfo: "Boshqa ma'lumotlar",
+        divorceApplication: "Nikohdan ajratish",
+        courtLocation: "Sud joylashuvi",
       },
     },
     ru: {
@@ -134,6 +136,8 @@ i18n.use(initReactI18next).init({
         childInfo: "Информация о ребенке",
         marriageInfo: "Информация о браке",
         otherInfo: "Другая информация",
+        divorceApplication: "Исковое заявление о расторжении брака",
+        courtLocation: "Местоположение суда",
       },
     },
   },
@@ -268,10 +272,13 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     onFinish={handleGeneratePdf}
     className="bg-gray-700 p-4 rounded-lg"
   >
+    <Divider className="text-gray-300">{t("divorceApplication")}</Divider>
+
     <Divider className="text-gray-300">{t("claimantInfo")}</Divider>
     <Form.Item
       name="claimant_full_name"
       label={<span className="text-gray-300">{t("claimantFullName")}</span>}
+      rules={[{ required: true, message: t("claimantFullName") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -281,6 +288,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="claimant_address"
       label={<span className="text-gray-300">{t("claimantAddress")}</span>}
+      rules={[{ required: true, message: t("claimantAddress") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -290,6 +298,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="claimant_phone"
       label={<span className="text-gray-300">{t("claimantPhone")}</span>}
+      rules={[{ required: true, message: t("claimantPhone") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -299,6 +308,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="claimant_email"
       label={<span className="text-gray-300">{t("claimantEmail")}</span>}
+      rules={[{ required: true, message: t("claimantEmail") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -310,6 +320,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="respondent_full_name"
       label={<span className="text-gray-300">{t("respondentFullName")}</span>}
+      rules={[{ required: true, message: t("respondentFullName") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -319,6 +330,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="respondent_address"
       label={<span className="text-gray-300">{t("respondentAddress")}</span>}
+      rules={[{ required: true, message: t("respondentAddress") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -328,6 +340,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="respondent_phone"
       label={<span className="text-gray-300">{t("respondentPhone")}</span>}
+      rules={[{ required: true, message: t("respondentPhone") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -337,6 +350,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="respondent_email"
       label={<span className="text-gray-300">{t("respondentEmail")}</span>}
+      rules={[{ required: true, message: t("respondentEmail") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -348,6 +362,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="child_full_name"
       label={<span className="text-gray-300">{t("childFullName")}</span>}
+      rules={[{ required: true, message: t("childFullName") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -357,6 +372,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="child_birth_date"
       label={<span className="text-gray-300">{t("childBirthDate")}</span>}
+      rules={[{ required: true, message: t("childBirthDate") + " " + t("nameRequired") }]}
     >
       <DatePicker
         format="YYYY-MM-DD"
@@ -367,6 +383,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="child_certificate"
       label={<span className="text-gray-300">{t("childCertificate")}</span>}
+      rules={[{ required: true, message: t("childCertificate") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -376,6 +393,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="child_fhdyo"
       label={<span className="text-gray-300">{t("childFhdyo")}</span>}
+      rules={[{ required: true, message: t("childFhdyo") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -387,6 +405,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="marriage_date"
       label={<span className="text-gray-300">{t("marriageDate")}</span>}
+      rules={[{ required: true, message: t("marriageDate") + " " + t("nameRequired") }]}
     >
       <DatePicker
         format="YYYY-MM-DD"
@@ -397,6 +416,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="certificate_number"
       label={<span className="text-gray-300">{t("certificateNumber")}</span>}
+      rules={[{ required: true, message: t("certificateNumber") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -406,6 +426,7 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="fhdyo_office"
       label={<span className="text-gray-300">{t("fhdyoOffice")}</span>}
+      rules={[{ required: true, message: t("fhdyoOffice") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -417,25 +438,30 @@ const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
     <Form.Item
       name="application_date"
       label={<span className="text-gray-300">{t("applicationDate")}</span>}
+      initialValue={moment()}
+      rules={[{ required: true, message: t("applicationDate") + " " + t("nameRequired") }]}
     >
       <DatePicker
         format="YYYY-MM-DD"
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
         placeholder={t("applicationDate")}
+        disabled
       />
     </Form.Item>
     <Form.Item
       name="court_name"
-      label={<span className="text-gray-300">{t("courtName")}</span>}
+      label={<span className="text-gray-300">{t("courtLocation")}</span>}
+      rules={[{ required: true, message: t("courtLocation") + " " + t("nameRequired") }]}
     >
       <Input
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("courtName")}
+        placeholder={t("courtLocation")}
       />
     </Form.Item>
     <Form.Item
       name="divorce_reason"
       label={<span className="text-gray-300">{t("divorceReason")}</span>}
+      rules={[{ required: true, message: t("divorceReason") + " " + t("nameRequired") }]}
     >
       <Input.TextArea
         className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
@@ -732,6 +758,7 @@ function Dashboard() {
         application_date: values.application_date ? moment(values.application_date).format("YYYY-MM-DD") : "",
         child_birth_date: values.child_birth_date ? moment(values.child_birth_date).format("YYYY-MM-DD") : "",
         marriage_date: values.marriage_date ? moment(values.marriage_date).format("YYYY-MM-DD") : "",
+        court_location: values.court_name, // Sud joylashuvi
       };
 
       const response = await axios.post(`${API_BASE_URL}/generate-pdf`, formattedValues, {
@@ -859,9 +886,8 @@ function Dashboard() {
           conversations.map((conv) => (
             <div
               key={conv.id}
-              className={`bg-gray-700 hover:bg-gray-600 p-3 rounded transition-colors cursor-pointer ${
-                chatRoomId === conv.id ? "bg-gray-600" : ""
-              }`}
+              className={`bg-gray-700 hover:bg-gray-600 p-3 rounded transition-colors cursor-pointer ${chatRoomId === conv.id ? "bg-gray-600" : ""
+                }`}
               onClick={() => {
                 fetchChatHistory(conv.id);
                 if (isDrawer) setIsHistoryDrawerVisible(false);
@@ -1032,7 +1058,6 @@ function Dashboard() {
         />
       </Modal>
     </div>
-  );
+  )
 }
-
 export default Dashboard;
