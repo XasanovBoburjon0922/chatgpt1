@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Layout, Input, Button, Typography, message, Modal } from "antd";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
 import axios from "axios";
-
-const { Content } = Layout;
-const { Title, Text } = Typography;
 
 function VerifyPage() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -54,24 +50,24 @@ function VerifyPage() {
             setIsModalVisible(true);
           } else {
             login(response.data.userInfo, response.data.token);
-            message.success("Muvaffaqiyatli kirildi!");
+            alert("Muvaffaqiyatli kirildi!");
             navigate("/dashboard");
           }
         } else if (response.data.valid === false) {
-          message.error("Kod noto'g'ri yoki muddati o'tgan!");
+          alert("Kod noto'g'ri yoki muddati o'tgan!");
           setCode(["", "", "", "", "", ""]);
         }
       }
     } catch (error) {
       console.error("Verification error:", error);
       if (error.response?.status === 400) {
-        message.error("Kod noto'g'ri yoki muddati o'tgan!");
+        alert("Kod noto'g'ri yoki muddati o'tgan!");
       } else if (error.response?.status === 429) {
-        message.error("Juda ko'p urinish. Biroz kuting.");
+        alert("Juda ko'p urinish. Biroz kuting.");
       } else if (error.response?.status >= 500) {
-        message.error("Server xatoligi. Keyinroq urinib ko'ring.");
+        alert("Server xatoligi. Keyinroq urinib ko'ring.");
       } else {
-        message.error("Internet aloqasini tekshiring.");
+        alert("Internet aloqasini tekshiring.");
       }
       setCode(["", "", "", "", "", ""]);
     } finally {
@@ -94,7 +90,7 @@ function VerifyPage() {
         document.getElementById(`code-input-5`)?.focus();
         return;
       } else {
-        message.error("Iltimos, 6 raqamli kodni kiriting!");
+        alert("Iltimos, 6 raqamli kodni kiriting!");
         return;
       }
     }
@@ -130,16 +126,16 @@ function VerifyPage() {
       await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
         phone_number: phoneNumber,
       });
-      message.success("Kod qayta yuborildi");
+      alert("Kod qayta yuborildi");
     } catch (error) {
       console.error("Resend code error:", error);
-      message.error("Kod qayta yuborishda xatolik");
+      alert("Kod qayta yuborishda xatolik");
     }
   };
 
   const handleModalOk = async () => {
     if (!fullName.trim()) {
-      message.error("Iltimos, ismingizni kiriting!");
+      alert("Iltimos, ismingizni kiriting!");
       return;
     }
     try {
@@ -152,13 +148,13 @@ function VerifyPage() {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
-      message.success("Ism muvaffaqiyatli saqlandi!");
+      alert("Ism muvaffaqiyatli saqlandi!");
       setIsModalVisible(false);
       login({ id: userId, full_name: fullName, phone_number: phoneNumber }, localStorage.getItem("access_token"));
       navigate("/dashboard");
     } catch (error) {
       console.error("Error updating full name:", error);
-      message.error("Ismni saqlashda xatolik yuz berdi!");
+      alert("Ismni saqlashda xatolik yuz berdi!");
     }
   };
 
@@ -175,111 +171,114 @@ function VerifyPage() {
   };
 
   return (
-    <div className="flex justify-center items-center bg-gray-900 px-4 min-h-screen">
-      <Layout className="bg-gray-800 shadow-lg p-8 rounded-lg w-full max-w-md">
-        <Content>
-          <div className="mb-6 text-center">
-            <Title level={2} className="!mb-4 !text-white">
-              Telefon raqamini tasdiqlang
-            </Title>
-            <Text className="block !text-gray-400 text-center">
-              <strong className="!text-white">{phoneNumberWithFormat}</strong> raqamiga
-              faollashtirish kodi bilan SMS yubordik.
-            </Text>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/login")}
+          className="flex items-center text-gray-400 hover:text-white mb-8 transition-colors duration-200"
+          disabled={isVerifying}
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
 
-          <div className="flex justify-center gap-2 mb-6">
+        {/* Logo/Icon Section */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Telefon raqamini tasdiqlang</h1>
+          <p className="text-gray-400">
+            <span className="text-white font-medium">{phoneNumberWithFormat}</span> raqamiga
+            faollashtirish kodi bilan SMS yubordik.
+          </p>
+        </div>
+
+        {/* Verification Form */}
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
+          <div className="flex justify-center gap-3 mb-8">
             {code.map((digit, index) => (
-              <Input
+              <input
                 key={index}
                 id={`code-input-${index}`}
+                type="text"
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value, e)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={(e) => handlePaste(e, index)}
                 maxLength={1}
-                className="!bg-gray-700 !border-gray-600 !font-bold !text-white !text-lg text-center"
-                size="large"
-                style={{
-                  width: "45px",
-                  height: "50px",
-                  fontSize: "18px",
-                  textAlign: "center",
-                }}
+                className="w-12 h-14 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 disabled={isVerifying}
               />
             ))}
           </div>
 
-          <Button
-            type="primary"
-            block
-            size="large"
-            className="!bg-blue-600 hover:!bg-blue-700 !mb-4"
+          <button
             onClick={handleTelegramRedirect}
             disabled={isVerifying}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-all duration-200 mb-6"
           >
             Telegram orqali yuborish
-          </Button>
+          </button>
 
           <div className="text-center">
             {timer > 0 ? (
-              <Text className="!text-gray-400">
-                Kodni qayta yuborish <span className="font-mono !text-white">{formatTime(timer)}</span>
-              </Text>
+              <p className="text-gray-400">
+                Kodni qayta yuborish <span className="font-mono text-white">{formatTime(timer)}</span>
+              </p>
             ) : (
-              <Button
-                type="link"
-                className="!p-0 !text-blue-400 hover:!text-blue-300"
+              <button
                 onClick={handleResendCode}
                 disabled={isVerifying}
+                className="text-blue-400 hover:text-blue-300 transition-colors duration-200"
               >
                 Kodni qayta yuborish
-              </Button>
+              </button>
             )}
           </div>
 
           {isVerifying && (
             <div className="mt-4 text-center">
-              <Text className="!text-gray-400">Tekshirilmoqda...</Text>
+              <p className="text-gray-400">Tekshirilmoqda...</p>
             </div>
           )}
+        </div>
 
-          <div className="mt-6 text-center">
-            <Button
-              type="text"
-              className="!text-gray-400 hover:!text-white"
-              onClick={() => navigate("/login")}
-              disabled={isVerifying}
-            >
-              ← Orqaga qaytish
-            </Button>
+        {/* Name Modal */}
+        {isModalVisible && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">
+              <h3 className="text-xl font-bold text-white mb-4">Ismingizni kiriting</h3>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Ism va familiyangizni kiriting"
+                className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleModalCancel}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all duration-200"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleModalOk}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
+                >
+                  Saqlash
+                </button>
+              </div>
+            </div>
           </div>
-
-          <Modal
-            title="Ismingizni kiriting"
-            open={isModalVisible}
-            onOk={handleModalOk}
-            onCancel={handleModalCancel}
-            okText="Saqlash"
-            cancelText="Bekor qilish"
-            okButtonProps={{
-              className: "!bg-blue-600 hover:!bg-blue-700",
-            }}
-            cancelButtonProps={{
-              className: "!text-gray-400 hover:!text-white",
-            }}
-          >
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ism va familiyangizni kiriting"
-              className="!bg-gray-700 !border-gray-600 !text-white placeholder:!text-gray-400"
-              size="large"
-            />
-          </Modal>
-        </Content>
-      </Layout>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,26 +1,17 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useRef } from "react";
-import { Layout, Input, Button, Typography, Select, Modal, Drawer, Form, DatePicker, Divider } from "antd";
-import {
-  PaperClipOutlined,
-  SearchOutlined,
-  AudioOutlined,
-  SendOutlined,
-  MenuOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
-import axios from "axios";
-import "../App.css";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "../auth/authContext";
-import UserDropdown from "./userDropdown";
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import moment from "moment";
+import { useState, useEffect, useRef } from "react"
+import axios from "axios"
+import "../App.css"
+import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
+import { useAuth } from "../auth/authContext"
+import UserDropdown from "./userDropdown"
+import i18n from "i18next"
+import { initReactI18next } from "react-i18next"
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import CategorySidebar  from "./categorySidebar"
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -53,33 +44,6 @@ i18n.use(initReactI18next).init({
         cancel: "Bekor qilish",
         nameRequired: "Iltimos, ismingizni kiriting!",
         nameUpdateError: "Ismni saqlashda xatolik yuz berdi!",
-        applicationDate: "Ariza sanasi",
-        certificateNumber: "Sertifikat raqami",
-        childBirthDate: "Bola tug'ilgan sana",
-        childCertificate: "Bola sertifikati",
-        childFhdyo: "Bola FHDI",
-        childFullName: "Bola to'liq ismi",
-        claimantAddress: "Ariza beruvchi manzili",
-        claimantEmail: "Ariza beruvchi email",
-        claimantFullName: "Ariza beruvchi to'liq ismi",
-        claimantPhone: "Ariza beruvchi telefon",
-        courtName: "Sud nomi",
-        divorceReason: "Ajralish sababi",
-        fhdyoOffice: "FHDI ofisi",
-        marriageDate: "Nikoh sanasi",
-        respondentAddress: "Javobgar manzili",
-        respondentEmail: "Javobgar email",
-        respondentFullName: "Javobgar to'liq ismi",
-        respondentPhone: "Javobgar telefon",
-        generatePdfSuccess: "Ariza muvaffaqiyatli yaratildi va yuklab olindi!",
-        generatePdfError: "Ariza PDF yaratishda xatolik yuz berdi!",
-        claimantInfo: "Ariza beruvchi haqida",
-        respondentInfo: "Javobgar haqida",
-        childInfo: "Bola haqida",
-        marriageInfo: "Nikoh haqida",
-        otherInfo: "Boshqa ma'lumotlar",
-        divorceApplication: "Nikohdan ajratish",
-        courtLocation: "Sud joylashuvi",
       },
     },
     ru: {
@@ -111,33 +75,6 @@ i18n.use(initReactI18next).init({
         cancel: "Отмена",
         nameRequired: "Пожалуйста, введите ваше имя!",
         nameUpdateError: "Ошибка при сохранении имени!",
-        applicationDate: "Дата заявления",
-        certificateNumber: "Номер сертификата",
-        childBirthDate: "Дата рождения ребенка",
-        childCertificate: "Сертификат ребенка",
-        childFhdyo: "ФХДУ ребенка",
-        childFullName: "Полное имя ребенка",
-        claimantAddress: "Адрес заявителя",
-        claimantEmail: "Email заявителя",
-        claimantFullName: "Полное имя заявителя",
-        claimantPhone: "Телефон заявителя",
-        courtName: "Название суда",
-        divorceReason: "Причина развода",
-        fhdyoOffice: "Офис ФХДУ",
-        marriageDate: "Дата брака",
-        respondentAddress: "Адрес ответчика",
-        respondentEmail: "Email ответчика",
-        respondentFullName: "Полное имя ответчика",
-        respondentPhone: "Телефон ответчика",
-        generatePdfSuccess: "Заявление успешно создано и скачано!",
-        generatePdfError: "Ошибка при создании PDF заявления!",
-        claimantInfo: "Информация о заявителе",
-        respondentInfo: "Информация об ответчике",
-        childInfo: "Информация о ребенке",
-        marriageInfo: "Информация о браке",
-        otherInfo: "Другая информация",
-        divorceApplication: "Исковое заявление о расторжении брака",
-        courtLocation: "Местоположение суда",
       },
     },
   },
@@ -146,767 +83,598 @@ i18n.use(initReactI18next).init({
   interpolation: {
     escapeValue: false,
   },
-});
+})
 
-const { Sider, Content } = Layout;
-const { Title, Text } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
+const API_BASE_URL = "https://imzo-ai.uzjoylar.uz"
 
-const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
-
-const Header = ({ t, isAuthenticated, navigate, changeLanguage, togglePdfDrawer, toggleHistoryDrawer }) => (
-  <div className="flex justify-between items-center bg-gray-800 px-4 py-3 border-gray-700 border-b">
-    <div className="flex items-center space-x-2">
-      <Button
-        type="text"
-        icon={<MenuOutlined />}
-        className="md:!hidden !text-white"
-        onClick={togglePdfDrawer}
-      />
-      <Title level={4} className="!mb-0 !text-white">
-        {t("chatgpt")}
-      </Title>
+const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, toggleHistoryPanel }) => (
+  <div className="flex justify-between items-center bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
+    <div className="flex items-center space-x-4">
+      <button 
+        onClick={toggleSidebar}
+        className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <h1 className="text-xl font-bold text-white">{t("chatgpt")}</h1>
+      <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
     </div>
-    <div className="flex items-center space-x-2 md:space-x-4">
+    <div className="flex items-center space-x-4">
       {isAuthenticated ? (
         <UserDropdown />
       ) : (
-        <Button
-          type="primary"
-          className="!bg-blue-600 hover:!bg-blue-700"
+        <button 
           onClick={() => navigate("/login")}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
         >
           {t("login")}
-        </Button>
+        </button>
       )}
-      <Select
-        defaultValue="uz"
-        style={{ width: 70 }}
-        onChange={changeLanguage}
-        className="!bg-gray-700 !text-white"
+      <select 
+        defaultValue="uz" 
+        onChange={(e) => changeLanguage(e.target.value)}
+        className="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        <Option value="uz">UZ</Option>
-        <Option value="ru">RU</Option>
-      </Select>
-      <Button
-        type="text"
-        icon={<MenuOutlined />}
-        className="md:!hidden !text-white"
-        onClick={toggleHistoryDrawer}
-      />
+        <option value="uz">UZ</option>
+        <option value="ru">RU</option>
+      </select>
+      <button 
+        onClick={toggleHistoryPanel}
+        className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
     </div>
   </div>
-);
+)
 
 const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t }) => (
-  <div className="mx-auto mt-4 w-full max-w-full md:max-w-3xl">
-    <div className="chat-input-container">
-      <TextArea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("enterName")}
-        disabled={!isAuthenticated || !user?.full_name}
-        className="!bg-transparent !border-none focus:ring-0 !text-white placeholder:!text-gray-400"
-        style={{
-          minHeight: "40px",
-          resize: "none",
-          padding: "8px",
-          fontSize: "14px",
-          lineHeight: "1.5",
-        }}
-        onPressEnter={(e) => {
-          if (!e.shiftKey && isAuthenticated && user?.full_name) {
-            e.preventDefault();
-            handleSend();
-          }
-        }}
-      />
-      <div className="flex space-x-1 md:space-x-2">
-        <Button
-          type="text"
-          icon={<PaperClipOutlined />}
-          className="!p-2 !text-gray-500 hover:!text-gray-300 disabled:!text-gray-600"
-          size="small"
-          disabled
-        />
-        <Button
-          type="text"
-          icon={<SearchOutlined />}
-          className="!p-2 !text-gray-500 hover:!text-gray-300 disabled:!text-gray-600"
-          size="small"
-          disabled
-        />
-        <Button
-          type="text"
-          icon={<AudioOutlined />}
-          className="!p-2 !text-gray-500 hover:!text-gray-300 disabled:!text-gray-600"
-          size="small"
-          disabled
-        />
-        <Button
-          type="primary"
-          icon={<SendOutlined />}
-          className="!bg-green-600 hover:!bg-green-700 !p-2 !border-none btn-hover-effect"
-          size="small"
-          onClick={handleSend}
-          disabled={!message.trim() || loading || !isAuthenticated || !user?.full_name}
-        />
+  <div className="px-6 pb-6">
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-4 backdrop-blur-sm">
+        <div className="flex items-end space-x-4">
+          <div className="flex-1">
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("enterName")}
+              disabled={!isAuthenticated || !user?.full_name}
+              className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none min-h-[20px] max-h-32"
+              style={{ height: 'auto' }}
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && isAuthenticated && user?.full_name) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              disabled
+              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </button>
+            <button
+              disabled
+              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            <button
+              disabled
+              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={!message.trim() || loading || !isAuthenticated || !user?.full_name}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-);
+)
 
 const TypingAnimation = () => (
   <div className="flex items-center space-x-2">
-    <div className="bg-gray-300 rounded-full w-2.5 h-2.5 typing-dot"></div>
-    <div className="bg-gray-300 rounded-full w-2.5 h-2.5 typing-dot"></div>
-    <div className="bg-gray-300 rounded-full w-2.5 h-2.5 typing-dot"></div>
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
   </div>
-);
+)
 
-const ApplicationForm = ({ form, handleGeneratePdf, loading, t }) => (
-  <Form
-    form={form}
-    layout="vertical"
-    onFinish={handleGeneratePdf}
-    className="bg-gray-700 p-4 rounded-lg"
-  >
-    <Divider className="text-gray-300">{t("divorceApplication")}</Divider>
-
-    <Divider className="text-gray-300">{t("claimantInfo")}</Divider>
-    <Form.Item
-      name="claimant_full_name"
-      label={<span className="text-gray-300">{t("claimantFullName")}</span>}
-      rules={[{ required: true, message: t("claimantFullName") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("claimantFullName")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="claimant_address"
-      label={<span className="text-gray-300">{t("claimantAddress")}</span>}
-      rules={[{ required: true, message: t("claimantAddress") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("claimantAddress")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="claimant_phone"
-      label={<span className="text-gray-300">{t("claimantPhone")}</span>}
-      rules={[{ required: true, message: t("claimantPhone") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("claimantPhone")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="claimant_email"
-      label={<span className="text-gray-300">{t("claimantEmail")}</span>}
-      rules={[{ required: true, message: t("claimantEmail") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("claimantEmail")}
-      />
-    </Form.Item>
-
-    <Divider className="text-gray-300">{t("respondentInfo")}</Divider>
-    <Form.Item
-      name="respondent_full_name"
-      label={<span className="text-gray-300">{t("respondentFullName")}</span>}
-      rules={[{ required: true, message: t("respondentFullName") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("respondentFullName")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="respondent_address"
-      label={<span className="text-gray-300">{t("respondentAddress")}</span>}
-      rules={[{ required: true, message: t("respondentAddress") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("respondentAddress")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="respondent_phone"
-      label={<span className="text-gray-300">{t("respondentPhone")}</span>}
-      rules={[{ required: true, message: t("respondentPhone") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("respondentPhone")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="respondent_email"
-      label={<span className="text-gray-300">{t("respondentEmail")}</span>}
-      rules={[{ required: true, message: t("respondentEmail") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("respondentEmail")}
-      />
-    </Form.Item>
-
-    <Divider className="text-gray-300">{t("childInfo")}</Divider>
-    <Form.Item
-      name="child_full_name"
-      label={<span className="text-gray-300">{t("childFullName")}</span>}
-      rules={[{ required: true, message: t("childFullName") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("childFullName")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="child_birth_date"
-      label={<span className="text-gray-300">{t("childBirthDate")}</span>}
-      rules={[{ required: true, message: t("childBirthDate") + " " + t("nameRequired") }]}
-    >
-      <DatePicker
-        format="YYYY-MM-DD"
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("childBirthDate")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="child_certificate"
-      label={<span className="text-gray-300">{t("childCertificate")}</span>}
-      rules={[{ required: true, message: t("childCertificate") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("childCertificate")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="child_fhdyo"
-      label={<span className="text-gray-300">{t("childFhdyo")}</span>}
-      rules={[{ required: true, message: t("childFhdyo") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("childFhdyo")}
-      />
-    </Form.Item>
-
-    <Divider className="text-gray-300">{t("marriageInfo")}</Divider>
-    <Form.Item
-      name="marriage_date"
-      label={<span className="text-gray-300">{t("marriageDate")}</span>}
-      rules={[{ required: true, message: t("marriageDate") + " " + t("nameRequired") }]}
-    >
-      <DatePicker
-        format="YYYY-MM-DD"
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("marriageDate")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="certificate_number"
-      label={<span className="text-gray-300">{t("certificateNumber")}</span>}
-      rules={[{ required: true, message: t("certificateNumber") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("certificateNumber")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="fhdyo_office"
-      label={<span className="text-gray-300">{t("fhdyoOffice")}</span>}
-      rules={[{ required: true, message: t("fhdyoOffice") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("fhdyoOffice")}
-      />
-    </Form.Item>
-
-    <Divider className="text-gray-300">{t("otherInfo")}</Divider>
-    <Form.Item
-      name="application_date"
-      label={<span className="text-gray-300">{t("applicationDate")}</span>}
-      initialValue={moment()}
-      rules={[{ required: true, message: t("applicationDate") + " " + t("nameRequired") }]}
-    >
-      <DatePicker
-        format="YYYY-MM-DD"
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("applicationDate")}
-        disabled
-      />
-    </Form.Item>
-    <Form.Item
-      name="court_name"
-      label={<span className="text-gray-300">{t("courtLocation")}</span>}
-      rules={[{ required: true, message: t("courtLocation") + " " + t("nameRequired") }]}
-    >
-      <Input
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("courtLocation")}
-      />
-    </Form.Item>
-    <Form.Item
-      name="divorce_reason"
-      label={<span className="text-gray-300">{t("divorceReason")}</span>}
-      rules={[{ required: true, message: t("divorceReason") + " " + t("nameRequired") }]}
-    >
-      <Input.TextArea
-        className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-        placeholder={t("divorceReason")}
-        rows={4}
-      />
-    </Form.Item>
-    <Form.Item>
-      <Button
-        type="primary"
-        htmlType="submit"
-        className="!bg-blue-600 hover:!bg-blue-700 w-full"
-        loading={loading}
-      >
-        {t("downloadApplication")}
-      </Button>
-    </Form.Item>
-  </Form>
-);
+const ChatMessage = ({ message, isUser, children }) => (
+  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
+    <div className={`flex items-start space-x-3 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+      {!isUser && (
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-bold text-white">AI</span>
+        </div>
+      )}
+      <div className={`rounded-2xl px-4 py-3 ${
+        isUser 
+          ? 'bg-blue-600 text-white' 
+          : 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 text-gray-100'
+      }`}>
+        {children || <p className="text-sm leading-relaxed">{message}</p>}
+      </div>
+      {isUser && (
+        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-medium text-white">You</span>
+        </div>
+      )}
+    </div>
+  </div>
+)
 
 function Dashboard() {
-  const { t } = useTranslation();
-  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
-  const [message, setMessage] = useState("");
-  const [conversations, setConversations] = useState([]);
-  const [chatRoomId, setChatRoomId] = useState(null);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newResponse, setNewResponse] = useState(null);
-  const [displayedResponse, setDisplayedResponse] = useState({});
-  const [userId] = useState(localStorage.getItem("user_id"));
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [isPdfDrawerVisible, setIsPdfDrawerVisible] = useState(false);
-  const [isHistoryDrawerVisible, setIsHistoryDrawerVisible] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const chatContainerRef = useRef(null);
-  const navigate = useNavigate();
-  const [form] = Form.useForm();
+  const { t } = useTranslation()
+  const { isAuthenticated, user, login, refreshAccessToken } = useAuth()
+  const [message, setMessage] = useState("")
+  const [conversations, setConversations] = useState([])
+  const [chatRoomId, setChatRoomId] = useState(null)
+  const [chatHistory, setChatHistory] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [newResponse, setNewResponse] = useState(null)
+  const [displayedResponse, setDisplayedResponse] = useState({})
+  const [userId] = useState(localStorage.getItem("user_id"))
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [fullName, setFullName] = useState("")
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const chatContainerRef = useRef(null)
+  const navigate = useNavigate()
 
   const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-  };
+    i18n.changeLanguage(lng)
+  }
 
-  const togglePdfDrawer = () => {
-    setIsPdfDrawerVisible(!isPdfDrawerVisible);
-  };
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen)
+  }
 
-  const toggleHistoryDrawer = () => {
-    setIsHistoryDrawerVisible(!isHistoryDrawerVisible);
-  };
+  const toggleHistoryPanel = () => {
+    setIsHistoryOpen(!isHistoryOpen)
+  }
 
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
-      setIsModalVisible(true);
+      setIsModalVisible(true)
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     const requestInterceptor = axios.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("access_token");
+        const token = localStorage.getItem("access_token")
         if (!token) {
-          throw new Error("No access token found");
+          throw new Error("No access token found")
         }
-        config.headers.Authorization = `Bearer ${token}`;
-        return config;
+        config.headers.Authorization = `Bearer ${token}`
+        return config
       },
       (error) => {
         if (error.message === "No access token found") {
-          toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
-          navigate("/login");
+          toast.error(t("tokenError"), { theme: "dark", position: "top-center" })
+          navigate("/login")
         }
-        return Promise.reject(error);
-      }
-    );
+        return Promise.reject(error)
+      },
+    )
 
     const responseInterceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
-        const originalRequest = error.config;
+        const originalRequest = error.config
 
         if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
+          originalRequest._retry = true
           try {
-            await refreshAccessToken();
-            return axios(originalRequest);
+            await refreshAccessToken()
+            return axios(originalRequest)
           } catch (refreshError) {
-            toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
-            navigate("/login");
-            return Promise.reject(refreshError);
+            toast.error(t("tokenError"), { theme: "dark", position: "top-center" })
+            navigate("/login")
+            return Promise.reject(refreshError)
           }
         }
 
         if (error.response?.status === 429) {
-          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" });
+          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" })
         } else if (!error.response) {
-          toast.error(t("networkError"), { theme: "dark", position: "top-center" });
+          toast.error(t("networkError"), { theme: "dark", position: "top-center" })
         }
 
-        return Promise.reject(error);
-      }
-    );
+        return Promise.reject(error)
+      },
+    )
 
     return () => {
-      axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, [refreshAccessToken, t, navigate]);
+      axios.interceptors.request.eject(requestInterceptor)
+      axios.interceptors.response.eject(responseInterceptor)
+    }
+  }, [refreshAccessToken, t, navigate])
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name) {
-      fetchChatRooms();
+      fetchChatRooms()
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
-  }, [chatHistory, displayedResponse]);
+  }, [chatHistory, displayedResponse])
 
   useEffect(() => {
     if (newResponse?.request && newResponse?.response) {
-      let currentText = "";
-      const fullText = newResponse.response;
-      const request = newResponse.request;
-      let index = 0;
+      let currentText = ""
+      const fullText = newResponse.response
+      const request = newResponse.request
+      let index = 0
 
       const type = () => {
         if (index < fullText.length) {
-          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
-          currentText += fullText.slice(index, index + step);
-          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += step;
-          setTimeout(type, 30);
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index)
+          currentText += fullText.slice(index, index + step)
+          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }))
+          index += step
+          setTimeout(type, 30)
         } else {
-          setNewResponse(null);
+          setNewResponse(null)
         }
-      };
-      type();
+      }
+      type()
     }
-  }, [newResponse]);
+  }, [newResponse])
 
   const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name) return;
+    if (!isAuthenticated || !user?.full_name) return
 
     try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`);
-      const { chat_rooms } = response.data;
-      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
+      setLoading(true)
+      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`)
+      const { chat_rooms } = response.data
+      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })))
     } catch (error) {
-      console.error("Error fetching chat rooms:", error);
+      console.error("Error fetching chat rooms:", error)
       if (error.response?.status !== 401) {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+        toast.error(t("serverError"), { theme: "dark", position: "top-center" })
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const fetchChatHistory = async (roomId) => {
     if (!isAuthenticated || !user?.full_name) {
-      return;
+      return
     }
 
     try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`);
-      const history = response.data.chats || [];
-      setChatHistory(history);
-      setChatRoomId(roomId);
+      setLoading(true)
+      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`)
+      const history = response.data.chats || []
+      setChatHistory(history)
+      setChatRoomId(roomId)
       setDisplayedResponse(
         history.reduce((acc, chat) => {
           if (chat.response) {
-            acc[chat.request] = chat.response;
+            acc[chat.request] = chat.response
           }
-          return acc;
-        }, {})
-      );
-      setNewResponse(null);
+          return acc
+        }, {}),
+      )
+      setNewResponse(null)
     } catch (error) {
-      console.error("Error fetching chat history:", error);
+      console.error("Error fetching chat history:", error)
       if (error.response?.status !== 401) {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+        toast.error(t("serverError"), { theme: "dark", position: "top-center" })
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const createChatRoom = async () => {
     if (!isAuthenticated || !user?.full_name) {
-      return null;
+      return null
     }
 
     try {
-      setLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId });
-      const newRoomId = response.data.ID;
-      await fetchChatRooms();
-      setChatRoomId(newRoomId);
-      setChatHistory([]);
-      setDisplayedResponse({});
-      setNewResponse(null);
-      return newRoomId;
+      setLoading(true)
+      const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId })
+      const newRoomId = response.data.ID
+      await fetchChatRooms()
+      setChatRoomId(newRoomId)
+      setChatHistory([])
+      setDisplayedResponse({})
+      setNewResponse(null)
+      return newRoomId
     } catch (error) {
-      console.error("Error creating chat room:", error);
+      console.error("Error creating chat room:", error)
       if (error.response?.status !== 401) {
-        toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
+        toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" })
       }
-      return null;
+      return null
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSend = async () => {
     if (!message.trim() || !isAuthenticated || !user?.full_name) {
       if (!user?.full_name) {
-        setIsModalVisible(true);
+        setIsModalVisible(true)
       }
-      return;
+      return
     }
 
-    let currentChatRoomId = chatRoomId;
+    let currentChatRoomId = chatRoomId
     if (!currentChatRoomId) {
-      currentChatRoomId = await createChatRoom();
+      currentChatRoomId = await createChatRoom()
       if (!currentChatRoomId) {
-        return;
+        return
       }
     }
 
-    const newMessage = { request: message, response: null };
-    setChatHistory([...chatHistory, newMessage]);
-    setMessage("");
-    setLoading(true);
+    const newMessage = { request: message, response: null }
+    setChatHistory([...chatHistory, newMessage])
+    setMessage("")
+    setLoading(true)
 
     try {
       const response = await axios.post(`${API_BASE_URL}/ask`, {
         chat_room_id: currentChatRoomId,
         request: message,
-      });
-      const requestId = response.data;
+      })
+      const requestId = response.data
 
-      const responseData = await pollForResponse(requestId);
-      const updatedMessage = { request: message, response: responseData.responce };
-      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-      setNewResponse(updatedMessage);
+      const responseData = await pollForResponse(requestId)
+      const updatedMessage = { request: message, response: responseData.responce }
+      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
+      setNewResponse(updatedMessage)
     } catch (error) {
-      console.error("Error sending message:", error);
-      if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
-        toast.error(error.response.data.error, { theme: "dark", position: "top-center" });
+      console.error("Error sending message:", error)
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data?.message || t("failedtosendmessage")
+        const updatedMessage = { request: message, response: errorMessage }
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
+        setNewResponse(updatedMessage)
+      } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
+        const errorMessage = error.response.data.error
+        const updatedMessage = { request: message, response: errorMessage }
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
+        setNewResponse(updatedMessage)
       } else if (error.response?.status !== 401) {
-        toast.error(t("failedtosendmessage"), { theme: "dark", position: "top-center" });
+        const updatedMessage = { request: message, response: t("failedtosendmessage") }
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
+        setNewResponse(updatedMessage)
+      } else {
+        setChatHistory((prev) => prev.slice(0, -1))
       }
-      setChatHistory((prev) => prev.slice(0, -1));
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const pollForResponse = async (requestId) => {
-    const maxAttempts = 1000;
-    const delay = 2000;
+    const maxAttempts = 1000
+    const delay = 2000
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`);
+        const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`)
         if (response.status === 200 && response.data.responce) {
-          return response.data;
+          return response.data
         }
       } catch (error) {
-        console.error("Polling error:", error);
+        console.error("Polling error:", error)
         if (error.response?.status === 401) {
-          throw error; // Let the interceptor handle 401
+          throw error
         }
       }
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
-    throw new Error("Response not received in time");
-  };
-
-  const handleGeneratePdf = async (values) => {
-    if (!isAuthenticated || !user?.full_name) {
-      setIsModalVisible(true);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const formattedValues = {
-        ...values,
-        application_date: values.application_date ? moment(values.application_date).format("YYYY-MM-DD") : "",
-        child_birth_date: values.child_birth_date ? moment(values.child_birth_date).format("YYYY-MM-DD") : "",
-        marriage_date: values.marriage_date ? moment(values.marriage_date).format("YYYY-MM-DD") : "",
-        court_location: values.court_name, // Sud joylashuvi
-      };
-
-      const response = await axios.post(`${API_BASE_URL}/generate-pdf`, formattedValues, {
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "divorce_application.pdf");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      toast.success(t("generatePdfSuccess"), { theme: "dark", position: "top-center" });
-      form.resetFields();
-      setShowForm(false);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      if (error.response?.status !== 401) {
-        toast.error(t("generatePdfError"), { theme: "dark", position: "top-center" });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    throw new Error("Response not received in time")
+  }
 
   const handleModalOk = async () => {
     if (!fullName.trim()) {
-      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
-      return;
+      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" })
+      return
     }
     try {
       await axios.post(`${API_BASE_URL}/users/update?id=${userId}`, {
         full_name: fullName,
         phone_number: user.phone_number,
-      });
-      toast.success(t("save"), { theme: "dark", position: "top-center" });
-      setIsModalVisible(false);
-      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
-      setFullName("");
+      })
+      toast.success(t("save"), { theme: "dark", position: "top-center" })
+      setIsModalVisible(false)
+      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"))
+      setFullName("")
     } catch (error) {
-      console.error("Error updating full name:", error);
+      console.error("Error updating full name:", error)
       if (error.response?.status !== 401) {
-        toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" });
+        toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" })
       }
     }
-  };
+  }
 
   const handleModalCancel = () => {
-    setIsModalVisible(false);
-    setFullName("");
-    navigate("/login");
-  };
+    setIsModalVisible(false)
+    setFullName("")
+    navigate("/login")
+  }
 
   const renderAssistantResponse = (responseText) => {
-    if (!responseText) return null;
+    if (!responseText) return null
 
-    const lines = responseText.split(/\n+/).filter((line) => line.trim());
+    const lines = responseText.split(/\n+/).filter((line) => line.trim())
 
     return lines.map((line, index) => {
-      let formattedLine = line;
-      formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
-      const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
+      let formattedLine = line
+      formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>")
+      const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ")
       if (isListItem) {
-        formattedLine = formattedLine.replace(/^[-*]\s+/, "");
+        formattedLine = formattedLine.replace(/^[-*]\s+/, "")
         return (
-          <li key={index} className="ml-4 text-gray-200">
+          <li key={index} className="ml-4 text-gray-200 mb-1">
             <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
           </li>
-        );
+        )
       }
 
       return (
-        <p key={index} className="mb-2 text-gray-200">
+        <p key={index} className="mb-2 text-gray-200 leading-relaxed">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
-      );
-    });
-  };
+      )
+    })
+  }
 
-  const ApplicationPanelContent = () => (
-    <div className="p-4 h-full overflow-y-auto">
-      <div className="mb-4 text-red-400 text-sm">{t("pdf")}</div>
-      <div className="space-y-4">
-        <Button
-          type="primary"
-          icon={<EditOutlined />}
-          className="!bg-blue-600 hover:!bg-blue-700 w-full"
-          onClick={() => setShowForm(true)}
-          disabled={!isAuthenticated || !user?.full_name}
-        >
-          {t("writeApplication")}
-        </Button>
-        {showForm && (
-          <ApplicationForm
-            form={form}
-            handleGeneratePdf={handleGeneratePdf}
-            loading={loading}
-            t={t}
-          />
-        )}
-      </div>
-    </div>
-  );
-
-  const HistoryPanelContent = ({ isDrawer = false }) => (
-    <div className="p-4 h-full overflow-y-auto">
-      <div className="flex items-center mb-4 text-red-400 text-sm">
-        {t("chathistory")}
-        <Button
-          type="text"
-          className="ml-2 !text-gray-300 hover:!text-white"
+  const HistoryPanel = ({ isDrawer = false }) => (
+    <div className="bg-gray-900/95 backdrop-blur-sm h-full flex flex-col border-l border-gray-800">
+      <div className="p-4 border-b border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-semibold">{t("chathistory")}</h3>
+          {isDrawer && (
+            <button
+              onClick={toggleHistoryPanel}
+              className="text-gray-400 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <button
           onClick={createChatRoom}
           disabled={loading || !isAuthenticated || !user?.full_name}
+          className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2 border border-gray-700"
         >
-          {t("newchat")}
-        </Button>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Add new chat</span>
+        </button>
       </div>
-      <div className="space-y-2">
-        {isAuthenticated &&
-          user?.full_name &&
-          conversations.map((conv) => (
-            <div
-              key={conv.id}
-              className={`bg-gray-700 hover:bg-gray-600 p-3 rounded transition-colors cursor-pointer ${chatRoomId === conv.id ? "bg-gray-600" : ""
-                }`}
-              onClick={() => {
-                fetchChatHistory(conv.id);
-                if (isDrawer) setIsHistoryDrawerVisible(false);
-              }}
-            >
-              <Text className="!text-gray-300 text-sm">{conv.title}</Text>
-            </div>
-          ))}
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="space-y-2">
+          {/* Today */}
+          <div className="mb-4">
+            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
+            {isAuthenticated && user?.full_name && conversations
+              .filter(conv => {
+                // Filter conversations from today - this is simplified
+                return true; // In real app, you'd filter by date
+              })
+              .slice(0, 3)
+              .map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
+                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+                  }`}
+                  onClick={() => {
+                    fetchChatHistory(conv.id)
+                    if (isDrawer) setIsHistoryOpen(false)
+                  }}
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                </div>
+              ))}
+          </div>
+
+          {/* Yesterday */}
+          <div className="mb-4">
+            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">YESTERDAY</h4>
+            {isAuthenticated && user?.full_name && conversations
+              .slice(3, 8)
+              .map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
+                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+                  }`}
+                  onClick={() => {
+                    fetchChatHistory(conv.id)
+                    if (isDrawer) setIsHistoryOpen(false)
+                  }}
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                </div>
+              ))}
+          </div>
+
+          {/* Previous */}
+          <div className="mb-4">
+            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">PREVIOUS</h4>
+            {isAuthenticated && user?.full_name && conversations
+              .slice(8)
+              .map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
+                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+                  }`}
+                  onClick={() => {
+                    fetchChatHistory(conv.id)
+                    if (isDrawer) setIsHistoryOpen(false)
+                  }}
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+
         {!isAuthenticated && (
-          <div className="mt-8 text-gray-400 text-sm text-center">
-            <Text className="!text-gray-400">{t("loginRequired")}</Text>
+          <div className="text-center mt-8">
+            <p className="text-gray-500 text-sm">{t("loginRequired")}</p>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 
   return (
-    <div className="bg-gray-900 h-screen overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col">
       <ToastContainer
         position="top-center"
         autoClose={3000}
@@ -918,146 +686,145 @@ function Dashboard() {
         draggable={false}
         pauseOnHover
         theme="dark"
-        toastClassName="chatgpt-toast"
       />
+      
       <Header
         t={t}
         isAuthenticated={isAuthenticated}
         navigate={navigate}
         changeLanguage={changeLanguage}
-        togglePdfDrawer={togglePdfDrawer}
-        toggleHistoryDrawer={toggleHistoryDrawer}
+        toggleSidebar={toggleSidebar}
+        toggleHistoryPanel={toggleHistoryPanel}
       />
 
-      <Layout className="bg-gray-900 h-[92.3vh]">
-        <Drawer
-          title={t("pdf")}
-          placement="left"
-          onClose={() => setIsPdfDrawerVisible(false)}
-          open={isPdfDrawerVisible}
-          className="md:!hidden"
-          bodyStyle={{ background: "#1f2937", padding: 0 }}
-          width="80%"
-        >
-          <ApplicationPanelContent />
-        </Drawer>
-
-        <Sider width={300} className="hidden md:block !bg-gray-800 border-gray-700 border-r">
-          <ApplicationPanelContent />
-        </Sider>
-
-        <Content className="flex flex-col h-[100vh]">
-          <div className="flex flex-col flex-1 p-4 md:p-8">
-            <div
-              className="flex-1 overflow-y-auto chat-history"
-              ref={chatContainerRef}
-              style={{ maxHeight: "calc(100vh - 230px)" }}
-            >
-              {!isAuthenticated && (
-                <div className="flex flex-col justify-center items-center h-full">
-                  <div className="mb-8 text-center">
-                    <Title level={3} className="mb-4 !text-gray-300">
-                      {t("loginRequired")}
-                    </Title>
-                    <Button
-                      type="primary"
-                      size="large"
-                      className="!bg-blue-600 hover:!bg-blue-700"
-                      onClick={() => navigate("/login")}
-                    >
-                      {t("login")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {isAuthenticated &&
-                chatHistory.map((chat, index) => (
-                  <div key={index} className="mb-4 md:mb-6 max-w-[90%] md:max-w-[80%] message-enter">
-                    <div className="chat-message-user">
-                      <Text className="font-medium !text-white">
-                        {t("you")} {chat.request}
-                      </Text>
-                    </div>
-                    {chat.response && (
-                      <div className="chat-message-assistant">
-                        <div className="text-gray-200">
-                          {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              {isAuthenticated && loading && (
-                <div className="chat-message-assistant">
-                  <TypingAnimation />
-                </div>
-              )}
-            </div>
-
-            <ChatInput
-              message={message}
-              setMessage={setMessage}
-              isAuthenticated={isAuthenticated}
-              user={user}
-              loading={loading}
-              handleSend={handleSend}
-              t={t}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:relative z-30 w-80 h-full transition-transform duration-300 ease-in-out`}>
+          <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800">
+            <CategorySidebar
+              onCategorySelect={(category, item) => {
+                console.log("Selected category:", category, "item:", item)
+                setIsSidebarOpen(false)
+              }}
             />
           </div>
+        </div>
 
-          <div className="p-4 border-gray-700 border-t text-gray-400 text-xs text-center">
-            {t("agree")}{" "}
-            <a href="#" className="text-blue-400 hover:text-blue-300">
-              {t("terms")}
-            </a>{" "}
-            and have read our{" "}
-            <a href="#" className="text-blue-400 hover:text-blue-300">
-              {t("privacy")}
-            </a>
-            .
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-6 py-6" ref={chatContainerRef}>
+            {!isAuthenticated && (
+              <div className="flex flex-col justify-center items-center h-full">
+                <div className="text-center max-w-md">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                      <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-4">{t("loginRequired")}</h2>
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                  >
+                    {t("login")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isAuthenticated && chatHistory.length === 0 && (
+              <div className="flex flex-col justify-center items-center h-full">
+                <div className="text-center max-w-md">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                      <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
+                    </div>
+                  </div>
+                  <h2 className="text-3xl font-bold text-white mb-2">Yooo, welcome back!</h2>
+                  <p className="text-gray-400">{t("askanything")}</p>
+                </div>
+              </div>
+            )}
+
+            {isAuthenticated && chatHistory.map((chat, index) => (
+              <div key={index}>
+                <ChatMessage message={chat.request} isUser={true} />
+                {chat.response && (
+                  <ChatMessage isUser={false}>
+                    <div className="text-sm leading-relaxed">
+                      {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
+                    </div>
+                  </ChatMessage>
+                )}
+              </div>
+            ))}
+
+            {isAuthenticated && loading && (
+              <ChatMessage isUser={false}>
+                <TypingAnimation />
+              </ChatMessage>
+            )}
           </div>
-        </Content>
 
-        <Sider width={300} className="hidden md:block !bg-gray-800 border-gray-700 border-l">
-          <HistoryPanelContent />
-        </Sider>
+          <ChatInput
+            message={message}
+            setMessage={setMessage}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            loading={loading}
+            handleSend={handleSend}
+            t={t}
+          />
+        </div>
 
-        <Drawer
-          title={t("chathistory")}
-          placement="right"
-          onClose={() => setIsHistoryDrawerVisible(false)}
-          open={isHistoryDrawerVisible}
-          className="md:!hidden"
-          bodyStyle={{ background: "#1f2937", padding: 0 }}
-          width="80%"
-        >
-          <HistoryPanelContent isDrawer={true} />
-        </Drawer>
-      </Layout>
+        {/* History Panel */}
+        <div className={`${isHistoryOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 fixed lg:relative z-20 w-80 h-full transition-transform duration-300 ease-in-out`}>
+          <HistoryPanel isDrawer={true} />
+        </div>
+      </div>
 
-      <Modal
-        title={t("enterName")}
-        open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        okText={t("save")}
-        cancelText={t("cancel")}
-        okButtonProps={{
-          className: "!bg-blue-600 hover:!bg-blue-700",
-        }}
-        cancelButtonProps={{
-          className: "!text-gray-400 hover:!text-white",
-        }}
-      >
-        <Input
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          placeholder={t("enterName")}
-          className="!bg-gray-600 !border-gray-500 !text-white placeholder:!text-gray-400"
-          size="large"
+      {/* Overlay for mobile */}
+      {(isSidebarOpen || isHistoryOpen) && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => {
+            setIsSidebarOpen(false)
+            setIsHistoryOpen(false)
+          }}
         />
-      </Modal>
+      )}
+
+      {/* Name Modal */}
+      {isModalVisible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">
+            <h3 className="text-xl font-bold text-white mb-4">{t("enterName")}</h3>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder={t("enterName")}
+              className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleModalCancel}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all duration-200"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={handleModalOk}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
+              >
+                {t("save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-export default Dashboard;
+
+export default Dashboard
