@@ -452,7 +452,7 @@ function Dashboard() {
         chat_room_id: currentChatRoomId,
         request: message,
       })
-      const requestId = response.data
+      const requestId = response.data.id
 
       const responseData = await pollForResponse(requestId)
       const updatedMessage = { request: message, response: responseData.responce }
@@ -484,7 +484,7 @@ function Dashboard() {
 
   const pollForResponse = async (requestId) => {
     const maxAttempts = 1000
-    const delay = 2000
+    const delay = 14000
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`)
