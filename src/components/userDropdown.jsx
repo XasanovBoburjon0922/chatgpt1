@@ -53,9 +53,9 @@ const UserDropdown = () => {
         >
           {getInitials(user?.full_name)}
         </div>
-        <span className="hidden md:flex font-medium text-white text-sm">
+        {/* <span className="hidden md:flex font-medium text-white text-sm">
           {user?.full_name || 'User'}
-        </span>
+        </span> */}
         <svg 
           className={`w-4 h-4 text-gray-400 transform transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''

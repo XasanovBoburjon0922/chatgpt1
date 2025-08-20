@@ -11,13 +11,13 @@ import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import CategorySidebar  from "./categorySidebar"
+import CategorySidebar from "./categorySidebar"
 
 i18n.use(initReactI18next).init({
   resources: {
     uz: {
       translation: {
-        chatgpt: "Imzo Ai",
+        chatgpt: "Imzo AI",
         login: "Kirish",
         signup: "Bepul ro'yxatdan o'tish",
         pdf: "Ariza yaratish",
@@ -30,7 +30,7 @@ i18n.use(initReactI18next).init({
         chathistory: "Chat tarixi",
         terms: "Shartlar",
         privacy: "Maxfiylik siyosati",
-        agree: "Imzo Ai bilan xabar yuborish orqali siz bizning",
+        agree: "Imzo AI bilan xabar yuborish orqali siz bizning",
         loginRequired: "Savollar berish uchun avval login qiling",
         failedtocreatechatroom: "Yangi chat yaratishda xatolik",
         pleasecreatechatroom: "Iltimos yangi chat yarating",
@@ -48,7 +48,7 @@ i18n.use(initReactI18next).init({
     },
     ru: {
       translation: {
-        chatgpt: "Imzo Ai",
+        chatgpt: "Imzo AI",
         login: "Вход",
         signup: "Бесплатная регистрация",
         pdf: "Создать заявление",
@@ -61,7 +61,7 @@ i18n.use(initReactI18next).init({
         chathistory: "История чатов",
         terms: "Условия",
         privacy: "Политика конфиденциальности",
-        agree: "Отправляя сообщение Imzo Ai, вы соглашаетесь с нашими",
+        agree: "Отправляя сообщение Imzo AI, вы соглашаетесь с нашими",
         loginRequired: "Для отправки вопросов сначала войдите в систему",
         failedtocreatechatroom: "Ошибка при создании нового чата",
         pleasecreatechatroom: "Пожалуйста, создайте новый чат",
@@ -90,7 +90,7 @@ const API_BASE_URL = "https://imzo-ai.uzjoylar.uz"
 const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, toggleHistoryPanel }) => (
   <div className="flex justify-between items-center bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
     <div className="flex items-center space-x-4">
-      <button 
+      <button
         onClick={toggleSidebar}
         className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
       >
@@ -105,22 +105,22 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
       {isAuthenticated ? (
         <UserDropdown />
       ) : (
-        <button 
+        <button
           onClick={() => navigate("/login")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
         >
           {t("login")}
         </button>
       )}
-      <select 
-        defaultValue="uz" 
+      <select
+        defaultValue="uz"
         onChange={(e) => changeLanguage(e.target.value)}
         className="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="uz">UZ</option>
         <option value="ru">RU</option>
       </select>
-      <button 
+      <button
         onClick={toggleHistoryPanel}
         className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
       >
@@ -214,11 +214,10 @@ const ChatMessage = ({ message, isUser, children }) => (
           <span className="text-sm font-bold text-white">AI</span>
         </div>
       )}
-      <div className={`rounded-2xl px-4 py-3 ${
-        isUser 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 text-gray-100'
-      }`}>
+      <div className={`rounded-2xl px-4 py-3 ${isUser
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 text-gray-100'
+        }`}>
         {children || <p className="text-sm leading-relaxed">{message}</p>}
       </div>
       {isUser && (
@@ -231,348 +230,62 @@ const ChatMessage = ({ message, isUser, children }) => (
 )
 
 function Dashboard() {
-  const { t } = useTranslation()
-  const { isAuthenticated, user, login, refreshAccessToken } = useAuth()
-  const [message, setMessage] = useState("")
-  const [conversations, setConversations] = useState([])
-  const [chatRoomId, setChatRoomId] = useState(null)
-  const [chatHistory, setChatHistory] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [newResponse, setNewResponse] = useState(null)
-  const [displayedResponse, setDisplayedResponse] = useState({})
-  const [userId] = useState(localStorage.getItem("user_id"))
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [fullName, setFullName] = useState("")
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const chatContainerRef = useRef(null)
-  const navigate = useNavigate()
+  const { t } = useTranslation();
+  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
+  const [message, setMessage] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [newResponse, setNewResponse] = useState(null);
+  const [displayedResponse, setDisplayedResponse] = useState({});
+  const [userId] = useState(localStorage.getItem("user_id"));
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("history"); // Default to "history"
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false); // Add isHistoryOpen state
+  const chatContainerRef = useRef(null);
+  const navigate = useNavigate();
 
   const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng)
-  }
+    i18n.changeLanguage(lng);
+  };
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   const toggleHistoryPanel = () => {
-    setIsHistoryOpen(!isHistoryOpen)
-  }
+    setIsHistoryOpen(!isHistoryOpen); // Toggle the history panel
+  };
 
-  useEffect(() => {
-    if (isAuthenticated && user && !user.full_name) {
-      setIsModalVisible(true)
-    }
-  }, [isAuthenticated, user])
+  // Sidebar navigation icons
+  const SidebarIcons = () => (
+    <div className="flex flex-col items-center py-4 border-b border-gray-800">
+      <button
+        onClick={() => setActiveTab("history")}
+        className={`p-3 rounded-lg mb-2 transition-colors duration-200 ${activeTab === "history" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => setActiveTab("categories")}
+        className={`p-3 rounded-lg transition-colors duration-200 ${activeTab === "categories" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+  );
 
-  useEffect(() => {
-    const requestInterceptor = axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem("access_token")
-        if (!token) {
-          throw new Error("No access token found")
-        }
-        config.headers.Authorization = `Bearer ${token}`
-        return config
-      },
-      (error) => {
-        if (error.message === "No access token found") {
-          toast.error(t("tokenError"), { theme: "dark", position: "top-center" })
-          navigate("/login")
-        }
-        return Promise.reject(error)
-      },
-    )
-
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true
-          try {
-            await refreshAccessToken()
-            return axios(originalRequest)
-          } catch (refreshError) {
-            toast.error(t("tokenError"), { theme: "dark", position: "top-center" })
-            navigate("/login")
-            return Promise.reject(refreshError)
-          }
-        }
-
-        if (error.response?.status === 429) {
-          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" })
-        } else if (!error.response) {
-          toast.error(t("networkError"), { theme: "dark", position: "top-center" })
-        }
-
-        return Promise.reject(error)
-      },
-    )
-
-    return () => {
-      axios.interceptors.request.eject(requestInterceptor)
-      axios.interceptors.response.eject(responseInterceptor)
-    }
-  }, [refreshAccessToken, t, navigate])
-
-  useEffect(() => {
-    if (isAuthenticated && user?.full_name) {
-      fetchChatRooms()
-    }
-  }, [isAuthenticated, user])
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-    }
-  }, [chatHistory, displayedResponse])
-
-  useEffect(() => {
-    if (newResponse?.request && newResponse?.response) {
-      let currentText = ""
-      const fullText = newResponse.response
-      const request = newResponse.request
-      let index = 0
-
-      const type = () => {
-        if (index < fullText.length) {
-          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index)
-          currentText += fullText.slice(index, index + step)
-          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }))
-          index += step
-          setTimeout(type, 30)
-        } else {
-          setNewResponse(null)
-        }
-      }
-      type()
-    }
-  }, [newResponse])
-
-  const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name) return
-
-    try {
-      setLoading(true)
-      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`)
-      const { chat_rooms } = response.data
-      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })))
-    } catch (error) {
-      console.error("Error fetching chat rooms:", error)
-      if (error.response?.status !== 401) {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" })
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name) {
-      return
-    }
-
-    try {
-      setLoading(true)
-      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`)
-      const history = response.data.chats || []
-      setChatHistory(history)
-      setChatRoomId(roomId)
-      setDisplayedResponse(
-        history.reduce((acc, chat) => {
-          if (chat.response) {
-            acc[chat.request] = chat.response
-          }
-          return acc
-        }, {}),
-      )
-      setNewResponse(null)
-    } catch (error) {
-      console.error("Error fetching chat history:", error)
-      if (error.response?.status !== 401) {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" })
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const createChatRoom = async () => {
-    if (!isAuthenticated || !user?.full_name) {
-      return null
-    }
-
-    try {
-      setLoading(true)
-      const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId })
-      const newRoomId = response.data.ID
-      await fetchChatRooms()
-      setChatRoomId(newRoomId)
-      setChatHistory([])
-      setDisplayedResponse({})
-      setNewResponse(null)
-      return newRoomId
-    } catch (error) {
-      console.error("Error creating chat room:", error)
-      if (error.response?.status !== 401) {
-        toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" })
-      }
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSend = async () => {
-    if (!message.trim() || !isAuthenticated || !user?.full_name) {
-      if (!user?.full_name) {
-        setIsModalVisible(true)
-      }
-      return
-    }
-
-    let currentChatRoomId = chatRoomId
-    if (!currentChatRoomId) {
-      currentChatRoomId = await createChatRoom()
-      if (!currentChatRoomId) {
-        return
-      }
-    }
-
-    const newMessage = { request: message, response: null }
-    setChatHistory([...chatHistory, newMessage])
-    setMessage("")
-    setLoading(true)
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/ask`, {
-        chat_room_id: currentChatRoomId,
-        request: message,
-      })
-      const requestId = response.data.id
-
-      const responseData = await pollForResponse(requestId)
-      const updatedMessage = { request: message, response: responseData.responce }
-      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
-      setNewResponse(updatedMessage)
-    } catch (error) {
-      console.error("Error sending message:", error)
-      if (error.response?.status === 400) {
-        const errorMessage = error.response.data?.message || t("failedtosendmessage")
-        const updatedMessage = { request: message, response: errorMessage }
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
-        setNewResponse(updatedMessage)
-      } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
-        const errorMessage = error.response.data.error
-        const updatedMessage = { request: message, response: errorMessage }
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
-        setNewResponse(updatedMessage)
-      } else if (error.response?.status !== 401) {
-        const updatedMessage = { request: message, response: t("failedtosendmessage") }
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage])
-        setNewResponse(updatedMessage)
-      } else {
-        setChatHistory((prev) => prev.slice(0, -1))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const pollForResponse = async (requestId) => {
-    const maxAttempts = 1000
-    const delay = 14000
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`)
-        if (response.status === 200 && response.data.responce) {
-          return response.data
-        }
-      } catch (error) {
-        console.error("Polling error:", error)
-        if (error.response?.status === 401) {
-          throw error
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay))
-    }
-    throw new Error("Response not received in time")
-  }
-
-  const handleModalOk = async () => {
-    if (!fullName.trim()) {
-      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" })
-      return
-    }
-    try {
-      await axios.post(`${API_BASE_URL}/users/update?id=${userId}`, {
-        full_name: fullName,
-        phone_number: user.phone_number,
-      })
-      toast.success(t("save"), { theme: "dark", position: "top-center" })
-      setIsModalVisible(false)
-      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"))
-      setFullName("")
-    } catch (error) {
-      console.error("Error updating full name:", error)
-      if (error.response?.status !== 401) {
-        toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" })
-      }
-    }
-  }
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false)
-    setFullName("")
-    navigate("/login")
-  }
-
-  const renderAssistantResponse = (responseText) => {
-    if (!responseText) return null
-
-    const lines = responseText.split(/\n+/).filter((line) => line.trim())
-
-    return lines.map((line, index) => {
-      let formattedLine = line
-      formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>")
-      const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ")
-      if (isListItem) {
-        formattedLine = formattedLine.replace(/^[-*]\s+/, "")
-        return (
-          <li key={index} className="ml-4 text-gray-200 mb-1">
-            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-          </li>
-        )
-      }
-
-      return (
-        <p key={index} className="mb-2 text-gray-200 leading-relaxed">
-          <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-        </p>
-      )
-    })
-  }
-
-  const HistoryPanel = ({ isDrawer = false }) => (
-    <div className="bg-gray-900/95 backdrop-blur-sm h-full flex flex-col border-l border-gray-800">
-      <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold">{t("chathistory")}</h3>
-          {isDrawer && (
-            <button
-              onClick={toggleHistoryPanel}
-              className="text-gray-400 hover:text-white"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+  // HistoryPanel component
+  const HistoryPanel = () => (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="mb-4">
         <button
           onClick={createChatRoom}
           disabled={loading || !isAuthenticated || !user?.full_name}
@@ -585,93 +298,401 @@ function Dashboard() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-2">
-          {/* Today */}
-          <div className="mb-4">
-            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
-            {isAuthenticated && user?.full_name && conversations
-              .filter(conv => {
-                // Filter conversations from today - this is simplified
-                return true; // In real app, you'd filter by date
-              })
-              .slice(0, 3)
-              .map((conv) => (
-                <div
-                  key={conv.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
-                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+      <div className="space-y-2">
+        {/* Today */}
+        <div className="mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
+          {isAuthenticated && user?.full_name && conversations
+            .filter(conv => {
+              // Filter conversations from today - this is simplified
+              return true; // In real app, you'd filter by date
+            })
+            .slice(0, 3)
+            .map((conv) => (
+              <div
+                key={conv.id}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
                   }`}
-                  onClick={() => {
-                    fetchChatHistory(conv.id)
-                    if (isDrawer) setIsHistoryOpen(false)
-                  }}
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
-                </div>
-              ))}
-          </div>
-
-          {/* Yesterday */}
-          <div className="mb-4">
-            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">YESTERDAY</h4>
-            {isAuthenticated && user?.full_name && conversations
-              .slice(3, 8)
-              .map((conv) => (
-                <div
-                  key={conv.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
-                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
-                  }`}
-                  onClick={() => {
-                    fetchChatHistory(conv.id)
-                    if (isDrawer) setIsHistoryOpen(false)
-                  }}
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
-                </div>
-              ))}
-          </div>
-
-          {/* Previous */}
-          <div className="mb-4">
-            <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">PREVIOUS</h4>
-            {isAuthenticated && user?.full_name && conversations
-              .slice(8)
-              .map((conv) => (
-                <div
-                  key={conv.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${
-                    chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
-                  }`}
-                  onClick={() => {
-                    fetchChatHistory(conv.id)
-                    if (isDrawer) setIsHistoryOpen(false)
-                  }}
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span className="text-gray-300 text-sm truncate">{conv.title}</span>
-                </div>
-              ))}
-          </div>
+                onClick={() => {
+                  fetchChatHistory(conv.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+              </div>
+            ))}
         </div>
 
-        {!isAuthenticated && (
-          <div className="text-center mt-8">
-            <p className="text-gray-500 text-sm">{t("loginRequired")}</p>
-          </div>
-        )}
+        {/* Yesterday */}
+        <div className="mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">YESTERDAY</h4>
+          {isAuthenticated && user?.full_name && conversations
+            .slice(3, 8)
+            .map((conv) => (
+              <div
+                key={conv.id}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+                  }`}
+                onClick={() => {
+                  fetchChatHistory(conv.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+              </div>
+            ))}
+        </div>
+
+        {/* Previous */}
+        <div className="mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">PREVIOUS</h4>
+          {isAuthenticated && user?.full_name && conversations
+            .slice(8)
+            .map((conv) => (
+              <div
+                key={conv.id}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
+                  }`}
+                onClick={() => {
+                  fetchChatHistory(conv.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+              </div>
+            ))}
+        </div>
       </div>
+
+      {!isAuthenticated && (
+        <div className="text-center mt-8">
+          <p className="text-gray-500 text-sm">{t("loginRequired")}</p>
+        </div>
+      )}
     </div>
-  )
+  );
+
+  const SidebarContent = () => {
+    if (activeTab === "history") {
+      return <HistoryPanel />;
+    } else if (activeTab === "categories") {
+      return (
+        <CategorySidebar
+          onCategorySelect={(category, item) => {
+            console.log("Selected category:", category, "item:", item);
+            setIsSidebarOpen(false);
+          }}
+        />
+      );
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user && !user.full_name) {
+      setIsModalVisible(true);
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          throw new Error("No access token found");
+        }
+        config.headers.Authorization = `Bearer ${token}`;
+        return config;
+      },
+      (error) => {
+        if (error.message === "No access token found") {
+          toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
+          navigate("/login");
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          try {
+            await refreshAccessToken();
+            return axios(originalRequest);
+          } catch (refreshError) {
+            toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
+            navigate("/login");
+            return Promise.reject(refreshError);
+          }
+        }
+
+        if (error.response?.status === 429) {
+          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" });
+        } else if (!error.response) {
+          toast.error(t("networkError"), { theme: "dark", position: "top-center" });
+        }
+
+        return Promise.reject(error);
+      },
+    );
+
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [refreshAccessToken, t, navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.full_name) {
+      fetchChatRooms();
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory, displayedResponse]);
+
+  useEffect(() => {
+    if (newResponse?.request && newResponse?.response) {
+      let currentText = "";
+      const fullText = newResponse.response;
+      const request = newResponse.request;
+      let index = 0;
+
+      const type = () => {
+        if (index < fullText.length) {
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
+          currentText += fullText.slice(index, index + step);
+          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
+          index += step;
+          setTimeout(type, 30);
+        } else {
+          setNewResponse(null);
+        }
+      };
+      type();
+    }
+  }, [newResponse]);
+
+  const fetchChatRooms = async () => {
+    if (!isAuthenticated || !user?.full_name) return;
+
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`);
+      const { chat_rooms } = response.data;
+      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
+    } catch (error) {
+      console.error("Error fetching chat rooms:", error);
+      if (error.response?.status !== 401) {
+        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChatHistory = async (roomId) => {
+    if (!isAuthenticated || !user?.full_name) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`);
+      const history = response.data.chats || [];
+      setChatHistory(history);
+      setChatRoomId(roomId);
+      setDisplayedResponse(
+        history.reduce((acc, chat) => {
+          if (chat.response) {
+            acc[chat.request] = chat.response;
+          }
+          return acc;
+        }, {}),
+      );
+      setNewResponse(null);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      if (error.response?.status !== 401) {
+        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createChatRoom = async () => {
+    if (!isAuthenticated || !user?.full_name) {
+      return null;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId });
+      const newRoomId = response.data.ID;
+      await fetchChatRooms();
+      setChatRoomId(newRoomId);
+      setChatHistory([]);
+      setDisplayedResponse({});
+      setNewResponse(null);
+      return newRoomId;
+    } catch (error) {
+      console.error("Error creating chat room:", error);
+      if (error.response?.status !== 401) {
+        toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!message.trim() || !isAuthenticated || !user?.full_name) {
+      if (!user?.full_name) {
+        setIsModalVisible(true);
+      }
+      return;
+    }
+
+    let currentChatRoomId = chatRoomId;
+    if (!currentChatRoomId) {
+      currentChatRoomId = await createChatRoom();
+      if (!currentChatRoomId) {
+        return;
+      }
+    }
+
+    const newMessage = { request: message, response: null };
+    setChatHistory([...chatHistory, newMessage]);
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/ask`, {
+        chat_room_id: currentChatRoomId,
+        request: message,
+      });
+      const requestId = response.data.id;
+
+      const responseData = await pollForResponse(requestId);
+      const updatedMessage = { request: message, response: responseData.responce };
+      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
+      setNewResponse(updatedMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data?.message || t("failedtosendmessage");
+        const updatedMessage = { request: message, response: errorMessage };
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
+        setNewResponse(updatedMessage);
+      } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
+        const errorMessage = error.response.data.error;
+        const updatedMessage = { request: message, response: errorMessage };
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
+        setNewResponse(updatedMessage);
+      } else if (error.response?.status !== 401) {
+        const updatedMessage = { request: message, response: t("failedtosendmessage") };
+        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
+        setNewResponse(updatedMessage);
+      } else {
+        setChatHistory((prev) => prev.slice(0, -1));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pollForResponse = async (requestId) => {
+    const maxAttempts = 1000;
+    const delay = 14000;
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`);
+        if (response.status === 200 && response.data.responce) {
+          return response.data;
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+        if (error.response?.status === 401) {
+          throw error;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    throw new Error("Response not received in time");
+  };
+
+  const handleModalOk = async () => {
+    if (!fullName.trim()) {
+      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    try {
+      await axios.post(`${API_BASE_URL}/users/update?id=${userId}`, {
+        full_name: fullName,
+        phone_number: user.phone_number,
+      });
+      toast.success(t("save"), { theme: "dark", position: "top-center" });
+      setIsModalVisible(false);
+      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
+      setFullName("");
+    } catch (error) {
+      console.error("Error updating full name:", error);
+      if (error.response?.status !== 401) {
+        toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" });
+      }
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    setFullName("");
+    navigate("/login");
+  };
+
+  const renderAssistantResponse = (responseText) => {
+    if (!responseText) return null;
+
+    const lines = responseText.split(/\n+/).filter((line) => line.trim());
+
+    return lines.map((line, index) => {
+      let formattedLine = line;
+      formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
+      if (isListItem) {
+        formattedLine = formattedLine.replace(/^[-*]\s+/, "");
+        return (
+          <li key={index} className="ml-4 text-gray-200 mb-1">
+            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
+          </li>
+        );
+      }
+
+      return (
+        <p key={index} className="mb-2 text-gray-200 leading-relaxed">
+          <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
+        </p>
+      );
+    });
+  };
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col">
@@ -687,26 +708,27 @@ function Dashboard() {
         pauseOnHover
         theme="dark"
       />
-      
-      <Header
-        t={t}
-        isAuthenticated={isAuthenticated}
-        navigate={navigate}
-        changeLanguage={changeLanguage}
-        toggleSidebar={toggleSidebar}
-        toggleHistoryPanel={toggleHistoryPanel}
-      />
+
+
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:relative z-30 w-80 h-full transition-transform duration-300 ease-in-out`}>
-          <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800">
-            <CategorySidebar
-              onCategorySelect={(category, item) => {
-                console.log("Selected category:", category, "item:", item)
-                setIsSidebarOpen(false)
-              }}
-            />
+        <div
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[430px] h-full transition-transform duration-300 ease-in-out`}
+        >
+          <Header
+            t={t}
+            isAuthenticated={isAuthenticated}
+            navigate={navigate}
+            changeLanguage={changeLanguage}
+            toggleSidebar={toggleSidebar}
+            toggleHistoryPanel={toggleHistoryPanel}
+          >
+          
+          </Header>
+          <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800 flex">
+            <SidebarIcons />
+            <SidebarContent />
           </div>
         </div>
 
@@ -746,18 +768,19 @@ function Dashboard() {
               </div>
             )}
 
-            {isAuthenticated && chatHistory.map((chat, index) => (
-              <div key={index}>
-                <ChatMessage message={chat.request} isUser={true} />
-                {chat.response && (
-                  <ChatMessage isUser={false}>
-                    <div className="text-sm leading-relaxed">
-                      {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
-                    </div>
-                  </ChatMessage>
-                )}
-              </div>
-            ))}
+            {isAuthenticated &&
+              chatHistory.map((chat, index) => (
+                <div key={index}>
+                  <ChatMessage message={chat.request} isUser={true} />
+                  {chat.response && (
+                    <ChatMessage isUser={false}>
+                      <div className="text-sm leading-relaxed">
+                        {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
+                      </div>
+                    </ChatMessage>
+                  )}
+                </div>
+              ))}
 
             {isAuthenticated && loading && (
               <ChatMessage isUser={false}>
@@ -776,11 +799,6 @@ function Dashboard() {
             t={t}
           />
         </div>
-
-        {/* History Panel */}
-        <div className={`${isHistoryOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 fixed lg:relative z-20 w-80 h-full transition-transform duration-300 ease-in-out`}>
-          <HistoryPanel isDrawer={true} />
-        </div>
       </div>
 
       {/* Overlay for mobile */}
@@ -788,8 +806,8 @@ function Dashboard() {
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => {
-            setIsSidebarOpen(false)
-            setIsHistoryOpen(false)
+            setIsSidebarOpen(false);
+            setIsHistoryOpen(false);
           }}
         />
       )}
@@ -824,7 +842,7 @@ function Dashboard() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;
