@@ -621,7 +621,7 @@ function Dashboard() {
 
   const pollForResponse = async (requestId) => {
     const maxAttempts = 1000;
-    const delay = 14000;
+    const delay = 8000;
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`);
