@@ -624,7 +624,7 @@ function Dashboard() {
     const delay = 14000;
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await axios.get(`${API_BASE_URL}/get/responce?id=${requestId}`);
+        const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`);
         if (response.status === 200 && response.data.responce) {
           return response.data;
         }
