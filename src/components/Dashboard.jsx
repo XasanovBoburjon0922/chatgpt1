@@ -533,7 +533,7 @@ function Dashboard() {
       }
     }
 
-    const newMessage = { request: message, response: null };
+    const newMessage = { request: message, response: null, pending: true };
     setChatHistory([...chatHistory, newMessage]);
     setMessage("");
     setLoading(true);
@@ -543,26 +543,32 @@ function Dashboard() {
         chat_room_id: currentChatRoomId,
         request: message,
       });
-      const requestId = response.data.id;
+      const { id, message: initialMessage } = response.data;
 
-      const responseData = await pollForResponse(requestId);
-      const updatedMessage = { request: message, response: responseData.responce };
+      // Update chat history with the initial message from /ask
+      setChatHistory((prev) => [
+        ...prev.slice(0, -1),
+        { request: message, response: initialMessage, pending: true },
+      ]);
+
+      const responseData = await pollForResponse(id);
+      const updatedMessage = { request: message, response: responseData.responce, pending: false };
       setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
       setNewResponse(updatedMessage);
     } catch (error) {
       console.error("Error sending message:", error);
       if (error.response?.status === 400) {
         const errorMessage = error.response.data?.message || t("failedtosendmessage");
-        const updatedMessage = { request: message, response: errorMessage };
+        const updatedMessage = { request: message, response: errorMessage, pending: false };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
         const errorMessage = error.response.data.error;
-        const updatedMessage = { request: message, response: errorMessage };
+        const updatedMessage = { request: message, response: errorMessage, pending: false };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else if (error.response?.status !== 401) {
-        const updatedMessage = { request: message, response: t("failedtosendmessage") };
+        const updatedMessage = { request: message, response: t("failedtosendmessage"), pending: false };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else {
@@ -713,7 +719,6 @@ function Dashboard() {
                       <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
                     </div>
                   </div>
-                  {/* <h2 className="text-2xl font-bold text-white mb-4">{t("loginRequired")}</h2> */}
                   <h2 className="text-2xl font-bold text-white mb-4">Imzo AI ga hush kelibsiz!</h2>
                 </div>
               </div>
@@ -744,14 +749,13 @@ function Dashboard() {
                       </div>
                     </ChatMessage>
                   )}
+                  {chat.pending && (
+                    <ChatMessage isUser={false}>
+                      <TypingAnimation />
+                    </ChatMessage>
+                  )}
                 </div>
               ))}
-
-            {isAuthenticated && loading && (
-              <ChatMessage isUser={false}>
-                <TypingAnimation />
-              </ChatMessage>
-            )}
           </div>
 
           <ChatInput
