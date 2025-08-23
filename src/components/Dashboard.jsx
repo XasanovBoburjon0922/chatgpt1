@@ -132,7 +132,7 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
   </div>
 )
 
-const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t }) => (
+const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, handleUnauthenticatedSend }) => (
   <div className="px-6 pb-6">
     <div className="max-w-4xl mx-auto">
       <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-4 backdrop-blur-sm">
@@ -141,8 +141,8 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("enterName")}
-              disabled={!isAuthenticated || !user?.full_name}
+              placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("askanything")}
+              disabled={loading}
               className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none min-h-[20px] max-h-32"
               style={{ height: 'auto' }}
               onInput={(e) => {
@@ -150,9 +150,13 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
                 e.target.style.height = e.target.scrollHeight + 'px';
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && isAuthenticated && user?.full_name) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  handleSend()
+                  if (isAuthenticated && user?.full_name) {
+                    handleSend()
+                  } else {
+                    handleUnauthenticatedSend()
+                  }
                 }
               }}
             />
@@ -183,8 +187,8 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
               </svg>
             </button>
             <button
-              onClick={handleSend}
-              disabled={!message.trim() || loading || !isAuthenticated || !user?.full_name}
+              onClick={isAuthenticated && user?.full_name ? handleSend : handleUnauthenticatedSend}
+              disabled={!message.trim() || loading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,8 +247,9 @@ function Dashboard() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("history"); // Default to "history"
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false); // Add isHistoryOpen state
+  const [activeTab, setActiveTab] = useState("history");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState(null); // Store pending message
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
 
@@ -257,10 +262,9 @@ function Dashboard() {
   };
 
   const toggleHistoryPanel = () => {
-    setIsHistoryOpen(!isHistoryOpen); // Toggle the history panel
+    setIsHistoryOpen(!isHistoryOpen);
   };
 
-  // Sidebar navigation icons
   const SidebarIcons = () => (
     <div className="flex flex-col items-center py-4 border-b border-gray-800">
       <button
@@ -282,7 +286,6 @@ function Dashboard() {
     </div>
   );
 
-  // HistoryPanel component
   const HistoryPanel = () => (
     <div className="flex-1 overflow-y-auto p-4">
       <div className="mb-4">
@@ -299,20 +302,15 @@ function Dashboard() {
       </div>
 
       <div className="space-y-2">
-        {/* Today */}
         <div className="mb-4">
           <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
           {isAuthenticated && user?.full_name && conversations
-            .filter(conv => {
-              // Filter conversations from today - this is simplified
-              return true; // In real app, you'd filter by date
-            })
+            .filter(conv => true)
             .slice(0, 3)
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
-                  }`}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -326,7 +324,6 @@ function Dashboard() {
             ))}
         </div>
 
-        {/* Yesterday */}
         <div className="mb-4">
           <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">YESTERDAY</h4>
           {isAuthenticated && user?.full_name && conversations
@@ -334,8 +331,7 @@ function Dashboard() {
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
-                  }`}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -349,7 +345,6 @@ function Dashboard() {
             ))}
         </div>
 
-        {/* Previous */}
         <div className="mb-4">
           <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">PREVIOUS</h4>
           {isAuthenticated && user?.full_name && conversations
@@ -357,8 +352,7 @@ function Dashboard() {
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
-                  }`}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -400,60 +394,13 @@ function Dashboard() {
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
       setIsModalVisible(true);
+    } else if (isAuthenticated && user?.full_name && pendingMessage) {
+      // Process pending message after login
+      setMessage(pendingMessage);
+      handleSend();
+      setPendingMessage(null);
     }
-  }, [isAuthenticated, user]);
-
-  useEffect(() => {
-    const requestInterceptor = axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          throw new Error("No access token found");
-        }
-        config.headers.Authorization = `Bearer ${token}`;
-        return config;
-      },
-      (error) => {
-        if (error.message === "No access token found") {
-          toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
-          navigate("/login");
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
-          try {
-            await refreshAccessToken();
-            return axios(originalRequest);
-          } catch (refreshError) {
-            toast.error(t("tokenError"), { theme: "dark", position: "top-center" });
-            navigate("/login");
-            return Promise.reject(refreshError);
-          }
-        }
-
-        if (error.response?.status === 429) {
-          toast.error(t("rateLimitError"), { theme: "dark", position: "top-center" });
-        } else if (!error.response) {
-          toast.error(t("networkError"), { theme: "dark", position: "top-center" });
-        }
-
-        return Promise.reject(error);
-      },
-    );
-
-    return () => {
-      axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, [refreshAccessToken, t, navigate]);
+  }, [isAuthenticated, user, pendingMessage]);
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name) {
@@ -619,9 +566,20 @@ function Dashboard() {
     }
   };
 
+  const handleUnauthenticatedSend = () => {
+    if (!message.trim()) return;
+    setPendingMessage(message);
+    setMessage("");
+    toast.info(t("loginRequired"), { 
+      theme: "dark", 
+      position: "top-center",
+      onClick: () => navigate("/login") // Navigate to login only when toast is clicked
+    });
+  };
+
   const pollForResponse = async (requestId) => {
     const maxAttempts = 1000;
-    const delay = 8000;
+    const delay = 14000;
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`);
@@ -709,10 +667,7 @@ function Dashboard() {
         theme="dark"
       />
 
-
-
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <div
           className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[430px] h-full transition-transform duration-300 ease-in-out`}
         >
@@ -723,16 +678,13 @@ function Dashboard() {
             changeLanguage={changeLanguage}
             toggleSidebar={toggleSidebar}
             toggleHistoryPanel={toggleHistoryPanel}
-          >
-          
-          </Header>
+          />
           <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800 flex">
             <SidebarIcons />
             <SidebarContent />
           </div>
         </div>
 
-        {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-6 py-6" ref={chatContainerRef}>
             {!isAuthenticated && (
@@ -744,12 +696,6 @@ function Dashboard() {
                     </div>
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-4">{t("loginRequired")}</h2>
-                  <button
-                    onClick={() => navigate("/login")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
-                  >
-                    {t("login")}
-                  </button>
                 </div>
               </div>
             )}
@@ -796,12 +742,12 @@ function Dashboard() {
             user={user}
             loading={loading}
             handleSend={handleSend}
+            handleUnauthenticatedSend={handleUnauthenticatedSend}
             t={t}
           />
         </div>
       </div>
 
-      {/* Overlay for mobile */}
       {(isSidebarOpen || isHistoryOpen) && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
@@ -812,7 +758,6 @@ function Dashboard() {
         />
       )}
 
-      {/* Name Modal */}
       {isModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">

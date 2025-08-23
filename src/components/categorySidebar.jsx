@@ -19,7 +19,6 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
-      alert("Kategoriyalarni yuklashda xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
@@ -34,7 +33,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
       prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
-
+// kategoriyani kursatsin logindan utmagan bulsayam yani tokeni bulmasayam
   const handleItemClick = (categoryId, itemId) => {
     const key = `${categoryId}-item-${itemId}`;
     setSelectedKeys([key]);
