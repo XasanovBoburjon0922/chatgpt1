@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, memo } from "react"
+import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import "../App.css"
 import { useNavigate } from "react-router-dom"
@@ -233,8 +233,59 @@ const ChatMessage = ({ message, isUser, children }) => (
   </div>
 )
 
-// Memoize SidebarContent to prevent unnecessary re-renders
-const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
+function Dashboard() {
+  const { t } = useTranslation();
+  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
+  const [message, setMessage] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [newResponse, setNewResponse] = useState(null);
+  const [displayedResponse, setDisplayedResponse] = useState({});
+  const [userId] = useState(localStorage.getItem("user_id"));
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("history");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState(null); // Store pending message
+  const chatContainerRef = useRef(null);
+  const navigate = useNavigate();
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const toggleHistoryPanel = () => {
+    setIsHistoryOpen(!isHistoryOpen);
+  };
+
+  const SidebarIcons = () => (
+    <div className="flex flex-col items-center py-4 border-b border-gray-800">
+      <button
+        onClick={() => setActiveTab("history")}
+        className={`p-3 rounded-lg mb-2 transition-colors duration-200 ${activeTab === "history" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => setActiveTab("categories")}
+        className={`p-3 rounded-lg transition-colors duration-200 ${activeTab === "categories" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+  );
+
   const HistoryPanel = () => (
     <div className="flex-1 overflow-y-auto p-4">
       <div className="mb-4">
@@ -324,85 +375,27 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
     </div>
   );
 
-  if (activeTab === "history") {
-    return <HistoryPanel />;
-  } else if (activeTab === "categories") {
-    return (
-      <CategorySidebar
-        onCategorySelect={(category, item) => {
-          console.log("Selected category:", category, "item:", item);
-          setIsSidebarOpen(false);
-        }}
-      />
-    );
-  }
-  return null;
-});
-
-function Dashboard() {
-  const { t } = useTranslation();
-  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
-  const [message, setMessage] = useState("");
-  const [conversations, setConversations] = useState([]);
-  const [chatRoomId, setChatRoomId] = useState(null);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newResponse, setNewResponse] = useState(null);
-  const [displayedResponse, setDisplayedResponse] = useState({});
-  const [userId] = useState(localStorage.getItem("user_id"));
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("history");
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState(null);
-  const [isCategoriesLocked, setIsCategoriesLocked] = useState(false);
-  const chatContainerRef = useRef(null);
-  const navigate = useNavigate();
-
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
+  const SidebarContent = () => {
+    if (activeTab === "history") {
+      return <HistoryPanel />;
+    } else if (activeTab === "categories") {
+      return (
+        <CategorySidebar
+          onCategorySelect={(category, item) => {
+            console.log("Selected category:", category, "item:", item);
+            setIsSidebarOpen(false);
+          }}
+        />
+      );
+    }
+    return null;
   };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const toggleHistoryPanel = () => {
-    setIsHistoryOpen(!isHistoryOpen);
-  };
-
-  const SidebarIcons = () => (
-    <div className="flex flex-col items-center py-4 border-b border-gray-800">
-      <button
-        onClick={() => {
-          setActiveTab("history");
-          setIsCategoriesLocked(false);
-        }}
-        className={`p-3 rounded-lg mb-2 transition-colors duration-200 ${activeTab === "history" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      </button>
-      <button
-        onClick={() => {
-          setActiveTab("categories");
-          setIsCategoriesLocked(true);
-        }}
-        className={`p-3 rounded-lg transition-colors duration-200 ${activeTab === "categories" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"}`}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-    </div>
-  );
 
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
       setIsModalVisible(true);
     } else if (isAuthenticated && user?.full_name && pendingMessage) {
+      // Process pending message after login
       setMessage(pendingMessage);
       handleSend();
       setPendingMessage(null);
@@ -580,7 +573,7 @@ function Dashboard() {
     toast.info(t("loginRequired"), { 
       theme: "dark", 
       position: "top-center",
-      onClick: () => navigate("/login")
+      onClick: () => navigate("/login") // Navigate to login only when toast is clicked
     });
   };
 
@@ -688,18 +681,7 @@ function Dashboard() {
           />
           <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800 flex">
             <SidebarIcons />
-            <SidebarContent
-              activeTab={activeTab}
-              setIsSidebarOpen={setIsSidebarOpen}
-              fetchChatHistory={fetchChatHistory}
-              chatRoomId={chatRoomId}
-              conversations={conversations}
-              createChatRoom={createChatRoom}
-              loading={loading}
-              isAuthenticated={isAuthenticated}
-              user={user}
-              t={t}
-            />
+            <SidebarContent />
           </div>
         </div>
 

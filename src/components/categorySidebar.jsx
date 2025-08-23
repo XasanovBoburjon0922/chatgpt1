@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -10,13 +10,16 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState([]);
   const navigate = useNavigate();
+  const hasFetched = useRef(false); // Track if categories have been fetched
 
   // Fetch categories from API
   const fetchCategories = async () => {
+    if (hasFetched.current) return; // Skip if already fetched
     setLoading(true);
     try {
       const response = await axios.get("https://imzo-ai.uzjoylar.uz/pdf-category/list");
       setCategories(response.data);
+      hasFetched.current = true; // Mark as fetched
     } catch (error) {
       console.error("Error fetching categories:", error);
     } finally {
@@ -33,7 +36,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
       prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
-// kategoriyani kursatsin logindan utmagan bulsayam yani tokeni bulmasayam
+
   const handleItemClick = (categoryId, itemId) => {
     const key = `${categoryId}-item-${itemId}`;
     setSelectedKeys([key]);
