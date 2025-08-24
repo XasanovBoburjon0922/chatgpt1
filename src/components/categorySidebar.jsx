@@ -53,7 +53,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
   }
 
   return (
-    <div className={`h-full ${className}`}>
+    <div className={`h-full w-[91%] ${className}`}>
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center text-white">
           <svg
@@ -73,7 +73,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
         </div>
       </div>
 
-      <div className="h-full overflow-y-auto p-4">
+      <div className="h-full overflow-y-auto chat-container p-4">
         <div className="space-y-2">
           {categories.map((category) => (
             <div key={category.id} className="bg-gray-800/50 rounded-lg border border-gray-700">

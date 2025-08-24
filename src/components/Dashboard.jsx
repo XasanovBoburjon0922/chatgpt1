@@ -236,7 +236,7 @@ const ChatMessage = ({ message, isUser, children }) => (
 // Memoize SidebarContent to prevent unnecessary re-renders
 const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
   const HistoryPanel = () => (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto chat-container p-4">
       <div className="mb-4">
         <button
           onClick={createChatRoom}
@@ -533,7 +533,7 @@ function Dashboard() {
       }
     }
 
-    const newMessage = { request: message, response: null, pending: true };
+    const newMessage = { request: message, response: null };
     setChatHistory([...chatHistory, newMessage]);
     setMessage("");
     setLoading(true);
@@ -543,32 +543,26 @@ function Dashboard() {
         chat_room_id: currentChatRoomId,
         request: message,
       });
-      const { id, message: initialMessage } = response.data;
+      const requestId = response.data.id;
 
-      // Update chat history with the initial message from /ask
-      setChatHistory((prev) => [
-        ...prev.slice(0, -1),
-        { request: message, response: initialMessage, pending: true },
-      ]);
-
-      const responseData = await pollForResponse(id);
-      const updatedMessage = { request: message, response: responseData.responce, pending: false };
+      const responseData = await pollForResponse(requestId);
+      const updatedMessage = { request: message, response: responseData.responce };
       setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
       setNewResponse(updatedMessage);
     } catch (error) {
       console.error("Error sending message:", error);
       if (error.response?.status === 400) {
         const errorMessage = error.response.data?.message || t("failedtosendmessage");
-        const updatedMessage = { request: message, response: errorMessage, pending: false };
+        const updatedMessage = { request: message, response: errorMessage };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
         const errorMessage = error.response.data.error;
-        const updatedMessage = { request: message, response: errorMessage, pending: false };
+        const updatedMessage = { request: message, response: errorMessage };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else if (error.response?.status !== 401) {
-        const updatedMessage = { request: message, response: t("failedtosendmessage"), pending: false };
+        const updatedMessage = { request: message, response: t("failedtosendmessage") };
         setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
         setNewResponse(updatedMessage);
       } else {
@@ -583,8 +577,8 @@ function Dashboard() {
     if (!message.trim()) return;
     setPendingMessage(message);
     setMessage("");
-    toast.info(t("loginRequired"), { 
-      theme: "dark", 
+    toast.info(t("loginRequired"), {
+      theme: "dark",
       position: "top-center",
       onClick: () => navigate("/login")
     });
@@ -666,23 +660,10 @@ function Dashboard() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col">
-      <ToastContainer
-        position="top-center"
-        autoClose={3000}
-        hideProgressBar
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss={false}
-        draggable={false}
-        pauseOnHover
-        theme="dark"
-      />
-
+    <div className="h-screen bg-black flex flex-col text-white">
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[430px] h-full transition-transform duration-300 ease-in-out`}
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[430px] h-full bg-black/95 border-r border-gray-800 transition-transform duration-300 ease-in-out`}
         >
           <Header
             t={t}
@@ -692,7 +673,7 @@ function Dashboard() {
             toggleSidebar={toggleSidebar}
             toggleHistoryPanel={toggleHistoryPanel}
           />
-          <div className="bg-gray-900/95 backdrop-blur-sm h-full border-r border-gray-800 flex">
+          <div className="h-full w-full flex">
             <SidebarIcons />
             <SidebarContent
               activeTab={activeTab}
@@ -710,31 +691,18 @@ function Dashboard() {
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto px-6 py-6" ref={chatContainerRef}>
+          <div className="flex-1 overflow-y-auto px-6 py-6 chat-container" ref={chatContainerRef}>
             {!isAuthenticated && (
-              <div className="flex flex-col justify-center items-center h-full">
-                <div className="text-center max-w-md">
-                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                      <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
-                    </div>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mb-4">Imzo AI ga hush kelibsiz!</h2>
-                </div>
+              <div className="flex flex-col justify-center items-center h-full text-center">
+                <h2 className="text-3xl font-bold mb-4">Welcome to Harvey AI</h2>
+                <p className="text-gray-400">Please log in to start chatting.</p>
               </div>
             )}
 
             {isAuthenticated && chatHistory.length === 0 && (
-              <div className="flex flex-col justify-center items-center h-full">
-                <div className="text-center max-w-md">
-                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                      <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
-                    </div>
-                  </div>
-                  <h2 className="text-3xl font-bold text-white mb-2">Yooo, welcome back!</h2>
-                  <p className="text-gray-400">{t("askanything")}</p>
-                </div>
+              <div className="flex flex-col justify-center items-center h-full text-center">
+                <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
+                <p className="text-gray-400">{t("askanything")}</p>
               </div>
             )}
 
@@ -749,13 +717,14 @@ function Dashboard() {
                       </div>
                     </ChatMessage>
                   )}
-                  {chat.pending && (
-                    <ChatMessage isUser={false}>
-                      <TypingAnimation />
-                    </ChatMessage>
-                  )}
                 </div>
               ))}
+
+            {isAuthenticated && loading && (
+              <ChatMessage isUser={false}>
+                <TypingAnimation />
+              </ChatMessage>
+            )}
           </div>
 
           <ChatInput
@@ -783,25 +752,25 @@ function Dashboard() {
 
       {isModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">
-            <h3 className="text-xl font-bold text-white mb-4">{t("enterName")}</h3>
+          <div className="bg-black/95 rounded-2xl border border-gray-800 p-6 w-full max-w-sm">
+            <h3 className="text-xl font-bold mb-4">{t("enterName")}</h3>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder={t("enterName")}
-              className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white mb-4"
             />
             <div className="flex gap-3">
               <button
                 onClick={handleModalCancel}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all"
               >
                 {t("cancel")}
               </button>
               <button
                 onClick={handleModalOk}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 bg-white text-black font-medium py-3 rounded-xl transition-all hover:bg-gray-200"
               >
                 {t("save")}
               </button>
