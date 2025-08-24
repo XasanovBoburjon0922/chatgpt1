@@ -132,7 +132,7 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
   </div>
 )
 
-const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, handleUnauthenticatedSend }) => (
+const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible }) => (
   <div className="px-6 pb-6">
     <div className="max-w-4xl mx-auto">
       <div className="bg-gray-900/45 border border-gray-700 rounded-2xl p-4 backdrop-blur-sm">
@@ -155,7 +155,7 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
                   if (isAuthenticated && user?.full_name) {
                     handleSend()
                   } else {
-                    handleUnauthenticatedSend()
+                    setIsModalVisible(true)
                   }
                 }
               }}
@@ -187,7 +187,13 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
               </svg>
             </button>
             <button
-              onClick={isAuthenticated && user?.full_name ? handleSend : handleUnauthenticatedSend}
+              onClick={() => {
+                if (isAuthenticated && user?.full_name) {
+                  handleSend()
+                } else {
+                  setIsModalVisible(true)
+                }
+              }}
               disabled={!message.trim() || loading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
             >
@@ -337,8 +343,9 @@ function Dashboard() {
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
   const [userId] = useState(localStorage.getItem("user_id"));
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("history");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -388,7 +395,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
-      setIsModalVisible(true);
+      setIsNameModalVisible(true);
     } else if (isAuthenticated && user?.full_name && pendingMessage) {
       setMessage(pendingMessage);
       handleSend();
@@ -507,7 +514,7 @@ function Dashboard() {
   const handleSend = async () => {
     if (!message.trim() || !isAuthenticated || !user?.full_name) {
       if (!user?.full_name) {
-        setIsModalVisible(true);
+        setIsNameModalVisible(true);
       }
       return;
     }
@@ -560,17 +567,6 @@ function Dashboard() {
     }
   };
 
-  const handleUnauthenticatedSend = () => {
-    if (!message.trim()) return;
-    setPendingMessage(message);
-    setMessage("");
-    toast.info(t("loginRequired"), {
-      theme: "dark",
-      position: "top-center",
-      onClick: () => navigate("/login")
-    });
-  };
-
   const pollForResponse = async (requestId) => {
     const maxAttempts = 1000;
     const delay = 14000;
@@ -591,7 +587,7 @@ function Dashboard() {
     throw new Error("Response not received in time");
   };
 
-  const handleModalOk = async () => {
+  const handleNameModalOk = async () => {
     if (!fullName.trim()) {
       toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
       return;
@@ -602,7 +598,7 @@ function Dashboard() {
         phone_number: user.phone_number,
       });
       toast.success(t("save"), { theme: "dark", position: "top-center" });
-      setIsModalVisible(false);
+      setIsNameModalVisible(false);
       login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
       setFullName("");
     } catch (error) {
@@ -613,8 +609,8 @@ function Dashboard() {
     }
   };
 
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
+  const handleNameModalCancel = () => {
+    setIsNameModalVisible(false);
     setFullName("");
     navigate("/login");
   };
@@ -721,8 +717,8 @@ function Dashboard() {
             user={user}
             loading={loading}
             handleSend={handleSend}
-            handleUnauthenticatedSend={handleUnauthenticatedSend}
             t={t}
+            setIsModalVisible={setIsLoginModalVisible}
           />
         </div>
       </div>
@@ -737,7 +733,7 @@ function Dashboard() {
         />
       )}
 
-      {isModalVisible && (
+      {isNameModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-black/85 rounded-2xl border border-gray-800 p-6 w-full max-w-sm">
             <h3 className="text-xl font-bold mb-4">{t("enterName")}</h3>
@@ -750,18 +746,50 @@ function Dashboard() {
             />
             <div className="flex gap-3">
               <button
-                onClick={handleModalCancel}
+                onClick={handleNameModalCancel}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all"
               >
                 {t("cancel")}
               </button>
               <button
-                onClick={handleModalOk}
+                onClick={handleNameModalOk}
                 className="flex-1 bg-white text-black font-medium py-3 rounded-xl transition-all hover:bg-gray-200"
               >
                 {t("save")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isLoginModalVisible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-black/85 rounded-2xl border border-gray-700 p-6 w-full max-w-md text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center">
+                <span className="text-white text-2xl">AI</span>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Continue with Imzo AI</h3>
+            <p className="text-gray-400 mb-4">To use Imzo AI, create an account or log into an existing one.</p>
+            <button
+              onClick={() => {
+                setIsLoginModalVisible(false);
+                navigate("/login");
+              }}
+              className="w-full bg-white hover:bg-gray-200 text-black px-4 py-3 rounded-lg font-medium mb-2 transition-colors duration-200"
+            >
+              {t("signup")}
+            </button>
+            <button
+              onClick={() => {
+                setIsLoginModalVisible(false);
+                navigate("/login");
+              }}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+            >
+              {t("login")}
+            </button>
           </div>
         </div>
       )}
