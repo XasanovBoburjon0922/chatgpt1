@@ -132,7 +132,7 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
   </div>
 )
 
-const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, handleUnauthenticatedSend }) => (
+const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible }) => (
   <div className="px-6 pb-6">
     <div className="max-w-4xl mx-auto">
       <div className="bg-gray-900/45 border border-gray-700 rounded-2xl p-4 backdrop-blur-sm">
@@ -155,7 +155,7 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
                   if (isAuthenticated && user?.full_name) {
                     handleSend()
                   } else {
-                    handleUnauthenticatedSend()
+                    setIsModalVisible(true)
                   }
                 }
               }}
@@ -187,7 +187,13 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
               </svg>
             </button>
             <button
-              onClick={isAuthenticated && user?.full_name ? handleSend : handleUnauthenticatedSend}
+              onClick={() => {
+                if (isAuthenticated && user?.full_name) {
+                  handleSend()
+                } else {
+                  setIsModalVisible(true)
+                }
+              }}
               disabled={!message.trim() || loading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
             >
@@ -210,46 +216,43 @@ const TypingAnimation = () => (
   </div>
 )
 
-const ChatMessage = ({ message, isUser, children }) => (
-  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
-    <div className={`flex items-start space-x-3 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-      {!isUser && (
+const ChatMessage = ({ message, assistantMessage, isLoading, children }) => (
+  <div className="mb-6 max-w-4xl mx-auto space-y-4">
+    {/* User Message Card (Right) */}
+    <div className="flex justify-end items-start space-x-3 space-x-reverse">
+      <div className="bg-blue-600 border border-blue-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
+        <p className="text-sm text-white leading-relaxed">{message}</p>
+      </div>
+      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-medium text-white">You</span>
+      </div>
+    </div>
+    {/* Assistant Message Card (Left) */}
+    {(assistantMessage || isLoading) && (
+      <div className="flex justify-start items-start space-x-3">
         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-sm font-bold text-white">AI</span>
         </div>
-      )}
-      <div className={`rounded-2xl px-4 py-3 ${isUser
-        ? 'bg-blue-600 text-white'
-        : 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 text-gray-100'
-        }`}>
-        {children || <p className="text-sm leading-relaxed">{message}</p>}
-      </div>
-      {isUser && (
-        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-medium text-white">You</span>
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
+          <div className="text-sm text-gray-100 leading-relaxed space-y-2">
+            {/* Display /ask API message if available */}
+            <p>{assistantMessage}</p>
+            {/* Display loading animation or final response */}
+            {isLoading ? (
+              <TypingAnimation />
+            ) : (
+              children
+            )}
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
   </div>
 )
 
-// Memoize SidebarContent to prevent unnecessary re-renders
 const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
   const HistoryPanel = () => (
     <div className="flex-1 overflow-y-auto chat-container p-4">
-      <div className="mb-4">
-        <button
-          onClick={createChatRoom}
-          disabled={loading || !isAuthenticated || !user?.full_name}
-          className="w-full bg-gray-900/65 hover:bg-gray-900/90 text-gray-300 font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2 border border-gray-700"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add new chat</span>
-        </button>
-      </div>
-
       <div className="space-y-2">
         <div className="mb-4">
           <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
@@ -350,8 +353,9 @@ function Dashboard() {
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
   const [userId] = useState(localStorage.getItem("user_id"));
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("history");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -401,7 +405,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
-      setIsModalVisible(true);
+      setIsNameModalVisible(true);
     } else if (isAuthenticated && user?.full_name && pendingMessage) {
       setMessage(pendingMessage);
       handleSend();
@@ -470,7 +474,11 @@ function Dashboard() {
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`);
       const history = response.data.chats || [];
-      setChatHistory(history);
+      setChatHistory(history.map(chat => ({
+        request: chat.request,
+        assistantMessage: chat.response,
+        isLoading: false
+      })));
       setChatRoomId(roomId);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
@@ -520,7 +528,7 @@ function Dashboard() {
   const handleSend = async () => {
     if (!message.trim() || !isAuthenticated || !user?.full_name) {
       if (!user?.full_name) {
-        setIsModalVisible(true);
+        setIsNameModalVisible(true);
       }
       return;
     }
@@ -533,7 +541,11 @@ function Dashboard() {
       }
     }
 
-    const newMessage = { request: message, response: null };
+    const newMessage = {
+      request: message,
+      assistantMessage: null,
+      isLoading: true,
+    };
     setChatHistory([...chatHistory, newMessage]);
     setMessage("");
     setLoading(true);
@@ -543,45 +555,58 @@ function Dashboard() {
         chat_room_id: currentChatRoomId,
         request: message,
       });
-      const requestId = response.data.id;
 
-      const responseData = await pollForResponse(requestId);
-      const updatedMessage = { request: message, response: responseData.responce };
-      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-      setNewResponse(updatedMessage);
+      if (response.status === 200) {
+        const { id, message: apiMessage } = response.data;
+
+        // Update chat history with the /ask API message
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, assistantMessage: apiMessage || "", isLoading: true }
+              : item
+          )
+        );
+
+        // Poll for the final response
+        const responseData = await pollForResponse(id);
+        const finalResponse = responseData.responce;
+
+        // Append the final response to the existing assistantMessage
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, assistantMessage: `${item.assistantMessage ? item.assistantMessage + "\n\n" : ""}${finalResponse}`, isLoading: false }
+              : item
+          )
+        );
+        setNewResponse({ request: message, response: finalResponse });
+      }
     } catch (error) {
       console.error("Error sending message:", error);
+      let errorMessage = t("failedtosendmessage");
       if (error.response?.status === 400) {
-        const errorMessage = error.response.data?.message || t("failedtosendmessage");
-        const updatedMessage = { request: message, response: errorMessage };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
-      } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
-        const errorMessage = error.response.data.error;
-        const updatedMessage = { request: message, response: errorMessage };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
+        errorMessage = error.response.data?.message || t("failedtosendmessage");
+      } else if (
+        error.response?.status === 500 &&
+        error.response.data?.error === "kunlik request limiti tugadi"
+      ) {
+        errorMessage = error.response.data.error;
       } else if (error.response?.status !== 401) {
-        const updatedMessage = { request: message, response: t("failedtosendmessage") };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
-      } else {
-        setChatHistory((prev) => prev.slice(0, -1));
+        errorMessage = t("serverError");
       }
+
+      setChatHistory((prev) =>
+        prev.map((item, index) =>
+          index === prev.length - 1
+            ? { ...item, assistantMessage: errorMessage, isLoading: false }
+            : item
+        )
+      );
+      setNewResponse({ request: message, response: errorMessage });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUnauthenticatedSend = () => {
-    if (!message.trim()) return;
-    setPendingMessage(message);
-    setMessage("");
-    toast.info(t("loginRequired"), {
-      theme: "dark",
-      position: "top-center",
-      onClick: () => navigate("/login")
-    });
   };
 
   const pollForResponse = async (requestId) => {
@@ -604,7 +629,7 @@ function Dashboard() {
     throw new Error("Response not received in time");
   };
 
-  const handleModalOk = async () => {
+  const handleNameModalOk = async () => {
     if (!fullName.trim()) {
       toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
       return;
@@ -615,7 +640,7 @@ function Dashboard() {
         phone_number: user.phone_number,
       });
       toast.success(t("save"), { theme: "dark", position: "top-center" });
-      setIsModalVisible(false);
+      setIsNameModalVisible(false);
       login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
       setFullName("");
     } catch (error) {
@@ -626,8 +651,8 @@ function Dashboard() {
     }
   };
 
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
+  const handleNameModalCancel = () => {
+    setIsNameModalVisible(false);
     setFullName("");
     navigate("/login");
   };
@@ -708,23 +733,15 @@ function Dashboard() {
 
             {isAuthenticated &&
               chatHistory.map((chat, index) => (
-                <div key={index}>
-                  <ChatMessage message={chat.request} isUser={true} />
-                  {chat.response && (
-                    <ChatMessage isUser={false}>
-                      <div className="text-sm leading-relaxed">
-                        {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
-                      </div>
-                    </ChatMessage>
-                  )}
-                </div>
+                <ChatMessage
+                  key={index}
+                  message={chat.request}
+                  assistantMessage={chat.assistantMessage}
+                  isLoading={chat.isLoading}
+                >
+                  {renderAssistantResponse(displayedResponse[chat.request])}
+                </ChatMessage>
               ))}
-
-            {isAuthenticated && loading && (
-              <ChatMessage isUser={false}>
-                <TypingAnimation />
-              </ChatMessage>
-            )}
           </div>
 
           <ChatInput
@@ -734,8 +751,8 @@ function Dashboard() {
             user={user}
             loading={loading}
             handleSend={handleSend}
-            handleUnauthenticatedSend={handleUnauthenticatedSend}
             t={t}
+            setIsModalVisible={setIsLoginModalVisible}
           />
         </div>
       </div>
@@ -750,7 +767,7 @@ function Dashboard() {
         />
       )}
 
-      {isModalVisible && (
+      {isNameModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-black/85 rounded-2xl border border-gray-800 p-6 w-full max-w-sm">
             <h3 className="text-xl font-bold mb-4">{t("enterName")}</h3>
@@ -763,18 +780,50 @@ function Dashboard() {
             />
             <div className="flex gap-3">
               <button
-                onClick={handleModalCancel}
+                onClick={handleNameModalCancel}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all"
               >
                 {t("cancel")}
               </button>
               <button
-                onClick={handleModalOk}
+                onClick={handleNameModalOk}
                 className="flex-1 bg-white text-black font-medium py-3 rounded-xl transition-all hover:bg-gray-200"
               >
                 {t("save")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isLoginModalVisible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-black/85 rounded-2xl border border-gray-700 p-6 w-full max-w-md text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center">
+                <span className="text-white text-2xl">AI</span>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Continue with Imzo AI</h3>
+            <p className="text-gray-400 mb-4">To use Imzo AI, create an account or log into an existing one.</p>
+            <button
+              onClick={() => {
+                setIsLoginModalVisible(false);
+                navigate("/login");
+              }}
+              className="w-full bg-white hover:bg-gray-200 text-black px-4 py-3 rounded-lg font-medium mb-2 transition-colors duration-200"
+            >
+              {t("signup")}
+            </button>
+            <button
+              onClick={() => {
+                setIsLoginModalVisible(false);
+                navigate("/login");
+              }}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+            >
+              {t("login")}
+            </button>
           </div>
         </div>
       )}

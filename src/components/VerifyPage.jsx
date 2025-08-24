@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
 import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function VerifyPage() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -50,24 +52,24 @@ function VerifyPage() {
             setIsModalVisible(true);
           } else {
             login(response.data.userInfo, response.data.token);
-            alert("Muvaffaqiyatli kirildi!");
+            toast.success("Muvaffaqiyatli kirildi!");
             navigate("/dashboard");
           }
         } else if (response.data.valid === false) {
-          alert("Kod noto'g'ri yoki muddati o'tgan!");
+          toast.error("Kod noto'g'ri yoki muddati o'tgan!");
           setCode(["", "", "", "", "", ""]);
         }
       }
     } catch (error) {
       console.error("Verification error:", error);
       if (error.response?.status === 400) {
-        alert("Kod noto'g'ri yoki muddati o'tgan!");
+        toast.error("Kod noto'g'ri yoki muddati o'tgan!");
       } else if (error.response?.status === 429) {
-        alert("Juda ko'p urinish. Biroz kuting.");
+        toast.error("Juda ko'p urinish. Biroz kuting.");
       } else if (error.response?.status >= 500) {
-        alert("Server xatoligi. Keyinroq urinib ko'ring.");
+        toast.error("Server xatoligi. Keyinroq urinib ko'ring.");
       } else {
-        alert("Internet aloqasini tekshiring.");
+        toast.error("Internet aloqasini tekshiring.");
       }
       setCode(["", "", "", "", "", ""]);
     } finally {
@@ -90,7 +92,7 @@ function VerifyPage() {
         document.getElementById(`code-input-5`)?.focus();
         return;
       } else {
-        alert("Iltimos, 6 raqamli kodni kiriting!");
+        toast.error("Iltimos, 6 raqamli kodni kiriting!");
         return;
       }
     }
@@ -126,16 +128,16 @@ function VerifyPage() {
       await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
         phone_number: phoneNumber,
       });
-      alert("Kod qayta yuborildi");
+      toast.success("Kod qayta yuborildi");
     } catch (error) {
       console.error("Resend code error:", error);
-      alert("Kod qayta yuborishda xatolik");
+      toast.error("Kod qayta yuborishda xatolik");
     }
   };
 
   const handleModalOk = async () => {
     if (!fullName.trim()) {
-      alert("Iltimos, ismingizni kiriting!");
+      toast.error("Iltimos, ismingizni kiriting!");
       return;
     }
     try {
@@ -148,13 +150,13 @@ function VerifyPage() {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
-      alert("Ism muvaffaqiyatli saqlandi!");
+      toast.success("Ism muvaffaqiyatli saqlandi!");
       setIsModalVisible(false);
       login({ id: userId, full_name: fullName, phone_number: phoneNumber }, localStorage.getItem("access_token"));
       navigate("/dashboard");
     } catch (error) {
       console.error("Error updating full name:", error);
-      alert("Ismni saqlashda xatolik yuz berdi!");
+      toast.error("Ismni saqlashda xatolik yuz berdi!");
     }
   };
 
@@ -173,6 +175,9 @@ function VerifyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
+        {/* Toast Container */}
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="dark" />
+
         {/* Back Button */}
         <button
           onClick={() => navigate("/login")}
@@ -192,7 +197,9 @@ function VerifyPage() {
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Telefon raqamini tasdiqlang</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">Telefon raqam
+
+ini tasdiqlang</h1>
           <p className="text-gray-400">
             <span className="text-white font-medium">{phoneNumberWithFormat}</span> raqamiga
             faollashtirish kodi bilan SMS yubordik.

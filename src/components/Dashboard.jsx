@@ -216,30 +216,40 @@ const TypingAnimation = () => (
   </div>
 )
 
-const ChatMessage = ({ message, isUser, children }) => (
-  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
-    <div className={`flex items-start space-x-3 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-      {!isUser && (
+const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoading }) => (
+  <div className="mb-6 max-w-4xl mx-auto space-y-4">
+    {/* User Message Card (Right) */}
+    <div className="flex justify-end items-start space-x-3 space-x-reverse">
+      <div className="bg-blue-600 border border-blue-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
+        <p className="text-sm text-white leading-relaxed">{message}</p>
+      </div>
+      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-medium text-white">You</span>
+      </div>
+    </div>
+    {/* Assistant Message Card (Left) */}
+    {(initialAssistantMessage || finalResponse || isLoading) && (
+      <div className="flex justify-start items-start space-x-3">
         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-sm font-bold text-white">AI</span>
         </div>
-      )}
-      <div className={`rounded-2xl px-4 py-3 ${isUser
-        ? 'bg-blue-600 text-white'
-        : 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 text-gray-100'
-        }`}>
-        {children || <p className="text-sm leading-relaxed">{message}</p>}
-      </div>
-      {isUser && (
-        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-medium text-white">You</span>
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
+          <div className="text-sm text-gray-100 leading-relaxed space-y-2">
+            {/* Display /ask API message if available */}
+            {initialAssistantMessage && <p>{initialAssistantMessage}</p>}
+            {/* Display loading animation or final response */}
+            {isLoading ? (
+              <TypingAnimation />
+            ) : (
+              finalResponse && <div>{finalResponse}</div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
   </div>
 )
 
-// Memoize SidebarContent to prevent unnecessary re-renders
 const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
   const HistoryPanel = () => (
     <div className="flex-1 overflow-y-auto chat-container p-4">
@@ -464,7 +474,12 @@ function Dashboard() {
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`);
       const history = response.data.chats || [];
-      setChatHistory(history);
+      setChatHistory(history.map(chat => ({
+        request: chat.request,
+        initialAssistantMessage: chat.response,
+        finalResponse: null,
+        isLoading: false
+      })));
       setChatRoomId(roomId);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
@@ -527,7 +542,12 @@ function Dashboard() {
       }
     }
 
-    const newMessage = { request: message, response: null };
+    const newMessage = {
+      request: message,
+      initialAssistantMessage: null,
+      finalResponse: null,
+      isLoading: true,
+    };
     setChatHistory([...chatHistory, newMessage]);
     setMessage("");
     setLoading(true);
@@ -537,31 +557,55 @@ function Dashboard() {
         chat_room_id: currentChatRoomId,
         request: message,
       });
-      const requestId = response.data.id;
 
-      const responseData = await pollForResponse(requestId);
-      const updatedMessage = { request: message, response: responseData.responce };
-      setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-      setNewResponse(updatedMessage);
+      if (response.status === 200) {
+        const { id, message: apiMessage } = response.data;
+
+        // Update chat history with the /ask API message
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, initialAssistantMessage: apiMessage || "", isLoading: true }
+              : item
+          )
+        );
+
+        // Poll for the final response
+        const responseData = await pollForResponse(id);
+        const finalResponse = responseData.responce;
+
+        // Store the final response separately
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, finalResponse: finalResponse, isLoading: false }
+              : item
+          )
+        );
+        setNewResponse({ request: message, response: finalResponse });
+      }
     } catch (error) {
       console.error("Error sending message:", error);
+      let errorMessage = t("failedtosendmessage");
       if (error.response?.status === 400) {
-        const errorMessage = error.response.data?.message || t("failedtosendmessage");
-        const updatedMessage = { request: message, response: errorMessage };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
-      } else if (error.response?.status === 500 && error.response.data?.error === "kunlik request limiti tugadi") {
-        const errorMessage = error.response.data.error;
-        const updatedMessage = { request: message, response: errorMessage };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
+        errorMessage = error.response.data?.message || t("failedtosendmessage");
+      } else if (
+        error.response?.status === 500 &&
+        error.response.data?.error === "kunlik request limiti tugadi"
+      ) {
+        errorMessage = error.response.data.error;
       } else if (error.response?.status !== 401) {
-        const updatedMessage = { request: message, response: t("failedtosendmessage") };
-        setChatHistory((prev) => [...prev.slice(0, -1), updatedMessage]);
-        setNewResponse(updatedMessage);
-      } else {
-        setChatHistory((prev) => prev.slice(0, -1));
+        errorMessage = t("serverError");
       }
+
+      setChatHistory((prev) =>
+        prev.map((item, index) =>
+          index === prev.length - 1
+            ? { ...item, finalResponse: errorMessage, isLoading: false }
+            : item
+        )
+      );
+      setNewResponse({ request: message, response: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -674,7 +718,7 @@ function Dashboard() {
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto px-6 py-6 chat-container" ref={chatContainerRef}>
+          <div className="flex-1 overflow-y-auto px-[100px] py-6 chat-container" ref={chatContainerRef}>
             {!isAuthenticated && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-3xl font-bold mb-4">Welcome to Imzo AI</h2>
@@ -691,23 +735,14 @@ function Dashboard() {
 
             {isAuthenticated &&
               chatHistory.map((chat, index) => (
-                <div key={index}>
-                  <ChatMessage message={chat.request} isUser={true} />
-                  {chat.response && (
-                    <ChatMessage isUser={false}>
-                      <div className="text-sm leading-relaxed">
-                        {renderAssistantResponse(displayedResponse[chat.request] || chat.response)}
-                      </div>
-                    </ChatMessage>
-                  )}
-                </div>
+                <ChatMessage
+                  key={index}
+                  message={chat.request}
+                  initialAssistantMessage={chat.initialAssistantMessage}
+                  finalResponse={renderAssistantResponse(displayedResponse[chat.request] || chat.finalResponse)}
+                  isLoading={chat.isLoading}
+                />
               ))}
-
-            {isAuthenticated && loading && (
-              <ChatMessage isUser={false}>
-                <TypingAnimation />
-              </ChatMessage>
-            )}
           </div>
 
           <ChatInput

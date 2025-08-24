@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -10,16 +10,29 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState([]);
   const navigate = useNavigate();
-  const hasFetched = useRef(false); // Track if categories have been fetched
+  const hasFetched = useRef(false);
 
-  // Fetch categories from API
   const fetchCategories = async () => {
-    if (hasFetched.current) return; // Skip if already fetched
+    if (hasFetched.current) return;
     setLoading(true);
     try {
-      const response = await axios.get("https://imzo-ai.uzjoylar.uz/pdf-category/list");
-      setCategories(response.data);
-      hasFetched.current = true; // Mark as fetched
+      const response = await axios.get("https://imzo-ai.uzjoylar.uz/pdf-category/");
+      const categoryData = response.data;
+
+      const categoriesWithItems = await Promise.all(
+        categoryData.map(async (category) => {
+          try {
+            const subResponse = await axios.get(`https://imzo-ai.uzjoylar.uz/pdf-category/list?id=${category.id}`);
+            return { ...category, items: subResponse.data || [] }; // Fallback to empty array if null
+          } catch (error) {
+            console.error(`Error fetching sub-items for category ${category.id}:`, error);
+            return { ...category, items: [] };
+          }
+        })
+      );
+
+      setCategories(categoriesWithItems);
+      hasFetched.current = true;
     } catch (error) {
       console.error("Error fetching categories:", error);
     } finally {
@@ -104,11 +117,6 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
                   <span className="text-gray-200 hover:text-white font-medium">
                     {category.name}
                   </span>
-                  {category.items.length > 0 && (
-                    <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded-full">
-                      {category.items.length}
-                    </span>
-                  )}
                 </div>
                 <svg
                   className={`w-4 h-4 text-gray-400 transform transition-transform duration-200 ${
@@ -129,7 +137,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
 
               {expandedCategories.includes(category.id) && (
                 <div className="pb-2 px-3">
-                  {category.items.length > 0 ? (
+                  {category.items && category.items.length > 0 ? (
                     <div className="space-y-1">
                       {category.items.map((item) => {
                         const itemKey = `${category.id}-item-${item.id}`;
@@ -167,7 +175,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
                     </div>
                   ) : (
                     <div className="p-3 text-center">
-                      <p className="text-gray-500 text-sm">Bo'sh kategoriya</p>
+                      <p className="text-gray-500 text-sm">Items yo'q</p>
                     </div>
                   )}
                 </div>
