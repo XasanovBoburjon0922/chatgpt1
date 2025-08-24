@@ -237,6 +237,19 @@ const ChatMessage = ({ message, isUser, children }) => (
 const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
   const HistoryPanel = () => (
     <div className="flex-1 overflow-y-auto chat-container p-4">
+      <div className="mb-4">
+        <button
+          onClick={createChatRoom}
+          disabled={loading || !isAuthenticated || !user?.full_name}
+          className="w-full bg-gray-900/65 hover:bg-gray-900/90 text-gray-300 font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2 border border-gray-700"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Add new chat</span>
+        </button>
+      </div>
+
       <div className="space-y-2">
         <div className="mb-4">
           <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
