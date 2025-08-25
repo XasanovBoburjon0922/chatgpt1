@@ -118,16 +118,16 @@ function VerifyPage() {
   };
 
   const handleTelegramRedirect = () => {
-    window.open("https://t.me/imzoai_bot", "_blank");
+    window.open("https://t.me/ai_imzo_bot", "_blank");
   };
 
   const handleResendCode = async () => {
     try {
       setTimer(60);
       setCode(["", "", "", "", "", ""]);
-      await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
-        phone_number: phoneNumber,
-      });
+      // await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
+      //   phone_number: phoneNumber,
+      // });
       toast.success("Kod qayta yuborildi");
     } catch (error) {
       console.error("Resend code error:", error);
