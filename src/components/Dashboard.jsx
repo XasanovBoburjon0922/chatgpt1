@@ -88,26 +88,18 @@ i18n.use(initReactI18next).init({
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz"
 
 const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, toggleHistoryPanel }) => (
-  <div className="flex justify-between items-center bg-gray-900/65 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
-    <div className="flex items-center space-x-4">
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      <h1 className="text-xl font-bold text-white">{t("chatgpt")}</h1>
-      <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
+  <div className="flex justify-between items-center bg-gray-900/65 backdrop-blur-sm border-b border-gray-800 px-4 py-3 lg:px-6 lg:py-4">
+    <div className="flex items-center space-x-3 lg:space-x-4">
+      <h1 className="text-lg lg:text-xl font-bold text-white">{t("chatgpt")}</h1>
+      <span className="hidden lg:inline text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
     </div>
-    <div className="flex items-center space-x-4">
+    <div className="flex items-center space-x-2 lg:space-x-4">
       {isAuthenticated ? (
         <UserDropdown />
       ) : (
         <button
           onClick={() => navigate("/login")}
-          className="bg-white hover:bg-blue-700 text-black px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+          className="bg-white hover:bg-blue-700 text-black px-3 py-1 rounded-md font-medium text-sm lg:px-4 lg:py-2 lg:rounded-lg transition-colors duration-200"
         >
           {t("login")}
         </button>
@@ -115,7 +107,7 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
       <select
         defaultValue="uz"
         onChange={(e) => changeLanguage(e.target.value)}
-        className="bg-gray-900/65 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="bg-gray-900/65 text-white border border-gray-700 rounded-md px-2 py-1 text-xs lg:px-3 lg:py-2 lg:rounded-lg lg:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="uz">UZ</option>
         <option value="ru">RU</option>
@@ -132,18 +124,18 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
   </div>
 )
 
-const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible }) => (
-  <div className="px-6 pb-6">
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-gray-900/45 border border-gray-700 rounded-2xl p-4 backdrop-blur-sm">
-        <div className="flex items-end space-x-4">
+const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible, isMobile }) => (
+  <div className="px-4 pb-4 lg:px-6 lg:pb-6">
+    <div className="max-w-full mx-auto lg:max-w-4xl">
+      <div className="bg-gray-900/45 border border-gray-700 rounded-2xl p-3 lg:p-4 backdrop-blur-sm">
+        <div className="flex items-end space-x-2 lg:space-x-4">
           <div className="flex-1">
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("askanything")}
               disabled={loading}
-              className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none min-h-[20px] max-h-32"
+              className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none min-h-[20px] max-h-24 text-sm lg:max-h-32"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
@@ -162,45 +154,65 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
             />
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              disabled
-              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-            </button>
-            <button
-              disabled
-              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-            <button
-              disabled
-              className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => {
-                if (isAuthenticated && user?.full_name) {
-                  handleSend()
-                } else {
-                  setIsModalVisible(true)
-                }
-              }}
-              disabled={!message.trim() || loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
+            {isMobile ? (
+              <button
+                onClick={() => {
+                  if (isAuthenticated && user?.full_name) {
+                    handleSend()
+                  } else {
+                    setIsModalVisible(true)
+                  }
+                }}
+                disabled={!message.trim() || loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            ) : (
+              <>
+                <button
+                  disabled
+                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </button>
+                <button
+                  disabled
+                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                <button
+                  disabled
+                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    if (isAuthenticated && user?.full_name) {
+                      handleSend()
+                    } else {
+                      setIsModalVisible(true)
+                    }
+                  }}
+                  disabled={!message.trim() || loading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -209,35 +221,31 @@ const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handle
 )
 
 const TypingAnimation = () => (
-  <div className="flex items-center space-x-2">
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+  <div className="flex items-center space-x-1">
+    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
   </div>
 )
 
-const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoading }) => (
-  <div className="mb-6 max-w-4xl mx-auto space-y-4">
-    {/* User Message Card (Right) */}
-    <div className="flex justify-end items-start space-x-3 space-x-reverse">
-      <div className="bg-blue-600 border border-blue-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
-        <p className="text-sm text-white leading-relaxed">{message}</p>
+const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoading, isMobile }) => (
+  <div className="mb-4 max-w-full mx-auto space-y-2 lg:mb-6 lg:max-w-4xl lg:space-y-4">
+    <div className="flex justify-end items-start space-x-2 space-x-reverse lg:space-x-3">
+      <div className="bg-blue-600 border border-blue-700 rounded-xl px-3 py-2 max-w-[70%] shadow-sm text-sm lg:px-4 lg:py-3">
+        <p className="text-white leading-relaxed">{message}</p>
       </div>
-      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-sm font-medium text-white">You</span>
+      <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 lg:w-8 lg:h-8">
+        <span className="text-xs font-medium text-white lg:text-sm">You</span>
       </div>
     </div>
-    {/* Assistant Message Card (Left) */}
     {(initialAssistantMessage || finalResponse || isLoading) && (
-      <div className="flex justify-start items-start space-x-3">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-bold text-white">AI</span>
+      <div className="flex justify-start items-start space-x-2 lg:space-x-3">
+        <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 lg:w-8 lg:h-8">
+          <span className="text-xs font-bold text-white lg:text-sm">AI</span>
         </div>
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-4 py-3 max-w-[70%] shadow-sm">
-          <div className="text-sm text-gray-100 leading-relaxed space-y-2">
-            {/* Display /ask API message if available */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-3 py-2 max-w-[70%] shadow-sm text-sm lg:px-4 lg:py-3">
+          <div className="text-gray-100 leading-relaxed space-y-1 lg:space-y-2">
             {initialAssistantMessage && <p>{initialAssistantMessage}</p>}
-            {/* Display loading animation or final response */}
             {isLoading ? (
               <TypingAnimation />
             ) : (
@@ -252,17 +260,17 @@ const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoadin
 
 const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
   const HistoryPanel = () => (
-    <div className="flex-1 overflow-y-auto chat-container p-4">
+    <div className="flex-1 overflow-y-auto chat-container p-3 lg:p-4">
       <div className="space-y-2">
-        <div className="mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">TODAY</h4>
+        <div className="mb-3 lg:mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">TODAY</h4>
           {isAuthenticated && user?.full_name && conversations
             .filter(conv => true)
             .slice(0, 3)
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
+                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -271,19 +279,18 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
               </div>
             ))}
         </div>
-
-        <div className="mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">YESTERDAY</h4>
+        <div className="mb-3 lg:mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">YESTERDAY</h4>
           {isAuthenticated && user?.full_name && conversations
             .slice(3, 8)
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"}`}
+                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -292,19 +299,18 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
               </div>
             ))}
         </div>
-
-        <div className="mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-2">PREVIOUS</h4>
+        <div className="mb-3 lg:mb-4">
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">PREVIOUS</h4>
           {isAuthenticated && user?.full_name && conversations
             .slice(8)
             .map((conv) => (
               <div
                 key={conv.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-3 group ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
+                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -313,14 +319,13 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span className="text-gray-300 text-sm truncate">{conv.title}</span>
+                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
               </div>
             ))}
         </div>
       </div>
-
       {!isAuthenticated && (
-        <div className="text-center mt-8">
+        <div className="text-center mt-4 lg:mt-8">
           <p className="text-gray-500 text-sm">{t("loginRequired")}</p>
         </div>
       )}
@@ -357,10 +362,10 @@ function Dashboard() {
   const [fullName, setFullName] = useState("");
   const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("history");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("history");
   const [pendingMessage, setPendingMessage] = useState(null);
-  const [isCategoriesLocked, setIsCategoriesLocked] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
 
@@ -374,34 +379,37 @@ function Dashboard() {
 
   const toggleHistoryPanel = () => {
     setIsHistoryOpen(!isHistoryOpen);
+    setIsSidebarOpen(!isHistoryOpen);
   };
 
   const SidebarIcons = () => (
-    <div className="flex flex-col items-center py-4 border-b border-gray-800">
+    <div className="flex flex-col items-center py-2 border-b border-gray-800 lg:py-4">
       <button
-        onClick={() => {
-          setActiveTab("history");
-          setIsCategoriesLocked(false);
-        }}
-        className={`p-3 rounded-lg mb-2 transition-colors duration-200 ${activeTab === "history" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
+        onClick={() => setActiveTab("history")}
+        className={`p-2 rounded-lg mb-1 transition-colors duration-200 lg:p-3 lg:mb-2 ${activeTab === "history" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </button>
       <button
-        onClick={() => {
-          setActiveTab("categories");
-          setIsCategoriesLocked(true);
-        }}
-        className={`p-3 rounded-lg transition-colors duration-200 ${activeTab === "categories" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
+        onClick={() => setActiveTab("categories")}
+        className={`p-2 rounded-lg transition-colors duration-200 lg:p-3 ${activeTab === "categories" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
     </div>
   );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && user && !user.full_name) {
@@ -561,7 +569,6 @@ function Dashboard() {
       if (response.status === 200) {
         const { id, message: apiMessage } = response.data;
 
-        // Update chat history with the /ask API message
         setChatHistory((prev) =>
           prev.map((item, index) =>
             index === prev.length - 1
@@ -570,11 +577,9 @@ function Dashboard() {
           )
         );
 
-        // Poll for the final response
         const responseData = await pollForResponse(id);
         const finalResponse = responseData.responce;
 
-        // Store the final response separately
         setChatHistory((prev) =>
           prev.map((item, index) =>
             index === prev.length - 1
@@ -679,7 +684,7 @@ function Dashboard() {
       }
 
       return (
-        <p key={index} className="mb-2 text-gray-200 leading-relaxed">
+        <p key={index} className="mb-1 text-gray-200 leading-relaxed lg:mb-2">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
       );
@@ -688,18 +693,30 @@ function Dashboard() {
 
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
+      <div className="block md:hidden">
+        <Header
+          t={t}
+          isAuthenticated={isAuthenticated}
+          navigate={navigate}
+          changeLanguage={changeLanguage}
+          toggleSidebar={toggleSidebar}
+          toggleHistoryPanel={toggleHistoryPanel}
+        />
+      </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[430px] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out`}
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
-          <Header
-            t={t}
-            isAuthenticated={isAuthenticated}
-            navigate={navigate}
-            changeLanguage={changeLanguage}
-            toggleSidebar={toggleSidebar}
-            toggleHistoryPanel={toggleHistoryPanel}
-          />
+          <div className="hidden md:block">
+            <Header
+              t={t}
+              isAuthenticated={isAuthenticated}
+              navigate={navigate}
+              changeLanguage={changeLanguage}
+              toggleSidebar={toggleSidebar}
+              toggleHistoryPanel={toggleHistoryPanel}
+            />
+          </div>
           <div className="h-full w-full flex">
             <SidebarIcons />
             <SidebarContent
@@ -716,23 +733,20 @@ function Dashboard() {
             />
           </div>
         </div>
-
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto px-[100px] py-6 chat-container" ref={chatContainerRef}>
+          <div className="flex-1 overflow-y-auto p-4 lg:px-[100px] lg:py-6 chat-container" ref={chatContainerRef}>
             {!isAuthenticated && (
               <div className="flex flex-col justify-center items-center h-full text-center">
-                <h2 className="text-3xl font-bold mb-4">Welcome to Imzo AI</h2>
-                <p className="text-gray-400">Please log in to start chatting.</p>
+                <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome to Imzo AI</h2>
+                <p className="text-gray-400 text-sm lg:text-base">Please log in to start chatting.</p>
               </div>
             )}
-
             {isAuthenticated && chatHistory.length === 0 && (
               <div className="flex flex-col justify-center items-center h-full text-center">
-                <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
-                <p className="text-gray-400">{t("askanything")}</p>
+                <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
+                <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-
             {isAuthenticated &&
               chatHistory.map((chat, index) => (
                 <ChatMessage
@@ -741,10 +755,10 @@ function Dashboard() {
                   initialAssistantMessage={chat.initialAssistantMessage}
                   finalResponse={renderAssistantResponse(displayedResponse[chat.request] || chat.finalResponse)}
                   isLoading={chat.isLoading}
+                  isMobile={isMobile}
                 />
               ))}
           </div>
-
           <ChatInput
             message={message}
             setMessage={setMessage}
@@ -754,10 +768,10 @@ function Dashboard() {
             handleSend={handleSend}
             t={t}
             setIsModalVisible={setIsLoginModalVisible}
+            isMobile={isMobile}
           />
         </div>
       </div>
-
       {(isSidebarOpen || isHistoryOpen) && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
@@ -767,28 +781,27 @@ function Dashboard() {
           }}
         />
       )}
-
       {isNameModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-black/85 rounded-2xl border border-gray-800 p-6 w-full max-w-sm">
-            <h3 className="text-xl font-bold mb-4">{t("enterName")}</h3>
+          <div className="bg-black/85 rounded-2xl border border-gray-800 p-4 w-full max-w-xs lg:p-6 lg:max-w-sm">
+            <h3 className="text-lg font-bold mb-3 lg:text-xl lg:mb-4">{t("enterName")}</h3>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder={t("enterName")}
-              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white mb-4"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white mb-3 text-sm lg:px-4 lg:py-3 lg:mb-4"
             />
-            <div className="flex gap-3">
+            <div className="flex gap-2 lg:gap-3">
               <button
                 onClick={handleNameModalCancel}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all"
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-xl transition-all text-sm lg:py-3"
               >
                 {t("cancel")}
               </button>
               <button
                 onClick={handleNameModalOk}
-                className="flex-1 bg-white text-black font-medium py-3 rounded-xl transition-all hover:bg-gray-200"
+                className="flex-1 bg-white text-black font-medium py-2 rounded-xl transition-all hover:bg-gray-200 text-sm lg:py-3"
               >
                 {t("save")}
               </button>
@@ -796,23 +809,22 @@ function Dashboard() {
           </div>
         </div>
       )}
-
       {isLoginModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-black/85 rounded-2xl border border-gray-700 p-6 w-full max-w-md text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl">AI</span>
+          <div className="bg-black/85 rounded-2xl border border-gray-700 p-4 w-full max-w-xs lg:p-6 lg:max-w-md text-center">
+            <div className="flex justify-center mb-3 lg:mb-4">
+              <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center lg:w-16 lg:h-16">
+                <span className="text-white text-xl lg:text-2xl">AI</span>
               </div>
             </div>
-            <h3 className="text-xl font-bold mb-2">Continue with Imzo AI</h3>
-            <p className="text-gray-400 mb-4">To use Imzo AI, create an account or log into an existing one.</p>
+            <h3 className="text-lg font-bold mb-2 lg:text-xl">Continue with Imzo AI</h3>
+            <p className="text-gray-400 mb-3 text-sm lg:mb-4">To use Imzo AI, create an account or log into an existing one.</p>
             <button
               onClick={() => {
                 setIsLoginModalVisible(false);
                 navigate("/login");
               }}
-              className="w-full bg-white hover:bg-gray-200 text-black px-4 py-3 rounded-lg font-medium mb-2 transition-colors duration-200"
+              className="w-full bg-white hover:bg-gray-200 text-black px-3 py-2 rounded-lg font-medium mb-2 text-sm lg:px-4 lg:py-3 transition-colors duration-200"
             >
               {t("signup")}
             </button>
@@ -821,13 +833,14 @@ function Dashboard() {
                 setIsLoginModalVisible(false);
                 navigate("/login");
               }}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg font-medium text-sm lg:px-4 lg:py-3 transition-colors duration-200"
             >
               {t("login")}
             </button>
           </div>
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }
