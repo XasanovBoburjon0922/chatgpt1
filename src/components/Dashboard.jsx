@@ -123,7 +123,6 @@ const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, t
     </div>
   </div>
 )
-
 const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible, isMobile }) => (
   <div className="px-4 pb-4 lg:px-6 lg:pb-6">
     <div className="max-w-full mx-auto lg:max-w-4xl">
