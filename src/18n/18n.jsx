@@ -38,6 +38,9 @@ i18n.use(initReactI18next).init({
         categories: "Kategoriyalar",
         noItems: "Items yo'q",
         noCategories: "Kategoriyalar topilmadi",
+        "notifications": "Xabarnomalar",
+        "no_notifications": "Xabarnomalar yo'q",
+        "mark_all_read": "Hammasini o'qilgan deb belgilash",
       },
     },
     ru: {
@@ -72,6 +75,9 @@ i18n.use(initReactI18next).init({
         categories: "Категории",
         noItems: "Нет элементов",
         noCategories: "Категории не найдены",
+        "notifications": "Уведомления",
+        "no_notifications": "Нет уведомлений",
+        "mark_all_read": "Отметить все как прочитанные"
       },
     },
   },

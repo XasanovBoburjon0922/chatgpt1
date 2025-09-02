@@ -7,8 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Header from "./Header"
-
+import Header from "./Header";
 import ChatInput from "./chatInput";
 import ChatMessage from "./chatMessages";
 import SidebarIcons from "./sidebar/sidebarIcons";
@@ -17,7 +16,7 @@ import SidebarContent from "./sidebar/sidebarContext";
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
 
 function Dashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isAuthenticated, user, login } = useAuth();
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
@@ -111,12 +110,27 @@ function Dashboard() {
 
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`);
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`, {
+        headers: {
+          Authorization: `${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
       const { chat_rooms } = response.data;
       setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
         toast.error(t("serverError"), { theme: "dark", position: "top-center" });
       }
     } finally {
@@ -131,26 +145,43 @@ function Dashboard() {
 
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`);
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`, {
+        headers: {
+          Authorization: `${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
       const history = response.data.chats || [];
-      setChatHistory(history.map(chat => ({
-        request: chat.request,
-        initialAssistantMessage: chat.response,
-        finalResponse: null,
-        isLoading: false
-      })));
+      setChatHistory(
+        history.map((chat) => ({
+          request: chat.request,
+          initialAssistantMessage: chat.response,
+          finalResponse: null,
+          isLoading: false,
+        }))
+      );
       setDisplayedResponse(
         history.reduce((acc, chat) => {
           if (chat.response) {
             acc[chat.request] = chat.response;
           }
           return acc;
-        }, {}),
+        }, {})
       );
       setNewResponse(null);
     } catch (error) {
       console.error("Error fetching chat history:", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
         toast.error(t("serverError"), { theme: "dark", position: "top-center" });
       }
     } finally {
@@ -165,7 +196,24 @@ function Dashboard() {
 
     try {
       setLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId });
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return null;
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/chat/room/create`,
+        { user_id: userId },
+        {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
       const newRoomId = response.data.ID;
       await fetchChatRooms();
       setChatHistory([]);
@@ -175,7 +223,9 @@ function Dashboard() {
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
         toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
       }
       return null;
@@ -211,10 +261,26 @@ function Dashboard() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/ask`, {
-        chat_room_id: currentChatRoomId,
-        request: message,
-      });
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/ask`,
+        {
+          chat_room_id: currentChatRoomId,
+          request: message,
+        },
+        {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.status === 200) {
         const { id, message: apiMessage } = response.data;
@@ -249,7 +315,9 @@ function Dashboard() {
         error.response.data?.error === "kunlik request limiti tugadi"
       ) {
         errorMessage = error.response.data.error;
-      } else if (error.response?.status !== 401) {
+      } else if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
         errorMessage = t("serverError");
       }
 
@@ -269,15 +337,29 @@ function Dashboard() {
   const pollForResponse = async (requestId) => {
     const maxAttempts = 1000;
     const delay = 14000;
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("Access token not found");
+      navigate("/login");
+      throw new Error("Access token not found");
+    }
+
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`);
+        const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`, {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
         if (response.status === 200 && response.data.responce) {
           return response.data;
         }
       } catch (error) {
         console.error("Polling error:", error);
         if (error.response?.status === 401) {
+          navigate("/login");
           throw error;
         }
       }
@@ -292,17 +374,36 @@ function Dashboard() {
       return;
     }
     try {
-      await axios.post(`${API_BASE_URL}/users/update?id=${userId}`, {
-        full_name: fullName,
-        phone_number: user.phone_number,
-      });
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      await axios.post(
+        `${API_BASE_URL}/users/update?id=${userId}`,
+        {
+          full_name: fullName,
+          phone_number: user.phone_number,
+        },
+        {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
       toast.success(t("save"), { theme: "dark", position: "top-center" });
       setIsNameModalVisible(false);
       login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
       setFullName("");
     } catch (error) {
       console.error("Error updating full name:", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
         toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" });
       }
     }
