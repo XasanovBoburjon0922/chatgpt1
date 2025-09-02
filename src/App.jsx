@@ -6,8 +6,8 @@ import { AuthProvider } from "./auth/authContext";
 import LoginPage from "./components/LoginPage";
 import DashboardPage from "./components/Dashboard";
 import VerifyPage from "./components/VerifyPage";
-import ProtectedRoute from "./route/ProtectedRoute";
 import ApplicationFormPage from "./components/ApplicationFormPage";
+import About from "./pages/About";
 
 function App() {
   return (
@@ -15,23 +15,12 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/verify" element={<VerifyPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        {/* <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        /> */}
-        <Route
-          path="/document"
-          element={
-            <ApplicationFormPage />
-          }
-        />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/c/:chatId" element={<DashboardPage />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/document" element={<ApplicationFormPage />} />
+        <Route path="/" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );

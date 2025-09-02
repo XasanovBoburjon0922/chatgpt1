@@ -1,10 +1,10 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const CategorySidebar = ({ onCategorySelect, className = "" }) => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState([]);
@@ -12,6 +12,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
   const navigate = useNavigate();
   const hasFetched = useRef(false);
 
+  // Fetch categories and their items from the API
   const fetchCategories = async () => {
     if (hasFetched.current) return;
     setLoading(true);
@@ -22,8 +23,10 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
       const categoriesWithItems = await Promise.all(
         categoryData.map(async (category) => {
           try {
-            const subResponse = await axios.get(`https://imzo-ai.uzjoylar.uz/pdf-category/list?id=${category.id}`);
-            return { ...category, items: subResponse.data || [] }; // Fallback to empty array if null
+            const subResponse = await axios.get(
+              `https://imzo-ai.uzjoylar.uz/pdf-category/list?id=${category.id}`
+            );
+            return { ...category, items: subResponse.data || [] };
           } catch (error) {
             console.error(`Error fetching sub-items for category ${category.id}:`, error);
             return { ...category, items: [] };
@@ -40,23 +43,28 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
     }
   };
 
+  // Fetch categories on component mount
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // Toggle category expansion
   const handleCategoryClick = (categoryId) => {
     setExpandedCategories((prev) =>
       prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
 
+  // Handle item selection and navigation
   const handleItemClick = (categoryId, itemId) => {
     const key = `${categoryId}-item-${itemId}`;
     setSelectedKeys([key]);
     onCategorySelect?.(categoryId, itemId);
+    console.log(`Navigating to /document?pdfCategoryID=${itemId}`);
     navigate(`/document?pdfCategoryID=${itemId}`);
   };
 
+  // Render loading spinner
   if (loading) {
     return (
       <div className={`flex justify-center items-center p-8 ${className}`}>
@@ -67,6 +75,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
 
   return (
     <div className={`h-full w-[91%] ${className}`}>
+      {/* Header with Categories title */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center text-white">
           <svg
@@ -82,10 +91,11 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
             />
           </svg>
-          <span className="font-semibold">Kategoriyalar</span>
+          <span className="font-semibold">{t("categories")}</span>
         </div>
       </div>
 
+      {/* Categories list */}
       <div className="h-full overflow-y-auto chat-container p-4">
         <div className="space-y-2">
           {categories.map((category) => (
@@ -175,7 +185,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
                     </div>
                   ) : (
                     <div className="p-3 text-center">
-                      <p className="text-gray-500 text-sm">Items yo'q</p>
+                      <p className="text-gray-500 text-sm">{t("noItems")}</p>
                     </div>
                   )}
                 </div>
@@ -205,7 +215,7 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
                 d="M8 5a2 2 0 012-2h4a2 2 0 012 2v1H8V5z"
               />
             </svg>
-            <p className="text-gray-500 text-sm">Kategoriyalar topilmadi</p>
+            <p className="text-gray-500 text-sm">{t("noCategories")}</p>
           </div>
         )}
       </div>
@@ -213,5 +223,4 @@ const CategorySidebar = ({ onCategorySelect, className = "" }) => {
   );
 };
 
-export { CategorySidebar };
 export default CategorySidebar;

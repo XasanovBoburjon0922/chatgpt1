@@ -1,357 +1,26 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef, memo } from "react"
-import axios from "axios"
-import "../App.css"
-import { useNavigate } from "react-router-dom"
-import { useTranslation } from "react-i18next"
-import { useAuth } from "../auth/authContext"
-import UserDropdown from "./userDropdown"
-import i18n from "i18next"
-import { initReactI18next } from "react-i18next"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import CategorySidebar from "./categorySidebar"
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/authContext";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Header from "./Header"
 
-i18n.use(initReactI18next).init({
-  resources: {
-    uz: {
-      translation: {
-        chatgpt: "Imzo AI",
-        login: "Kirish",
-        signup: "Bepul ro'yxatdan o'tish",
-        pdf: "Ariza yaratish",
-        writeApplication: "Ariza yozish",
-        generateApplication: "Ariza PDF yaratish",
-        downloadApplication: "Arizani yuklab olish",
-        askanything: "Har qanday savol bering",
-        you: "Siz:",
-        newchat: "Yangi chat",
-        chathistory: "Chat tarixi",
-        terms: "Shartlar",
-        privacy: "Maxfiylik siyosati",
-        agree: "Imzo AI bilan xabar yuborish orqali siz bizning",
-        loginRequired: "Savollar berish uchun avval login qiling",
-        failedtocreatechatroom: "Yangi chat yaratishda xatolik",
-        pleasecreatechatroom: "Iltimos yangi chat yarating",
-        failedtosendmessage: "Xabar yuborishda xatolik",
-        rateLimitError: "Siz juda ko'p so'rov yuboryapsiz. Biroz kuting.",
-        serverError: "Server xatoligi yuz berdi. Keyinroq qayta urinib ko'ring.",
-        networkError: "Internet aloqasini tekshiring.",
-        tokenError: "Autentifikatsiya tokeni topilmadi. Iltimos, qayta login qiling.",
-        enterName: "Ismingizni kiriting",
-        save: "Saqlash",
-        cancel: "Bekor qilish",
-        nameRequired: "Iltimos, ismingizni kiriting!",
-        nameUpdateError: "Ismni saqlashda xatolik yuz berdi!",
-      },
-    },
-    ru: {
-      translation: {
-        chatgpt: "Imzo AI",
-        login: "Вход",
-        signup: "Бесплатная регистрация",
-        pdf: "Создать заявление",
-        writeApplication: "Написать заявление",
-        generateApplication: "Создать PDF заявления",
-        downloadApplication: "Скачать заявление",
-        askanything: "Задайте любой вопрос",
-        you: "Вы:",
-        newchat: "Новый чат",
-        chathistory: "История чатов",
-        terms: "Условия",
-        privacy: "Политика конфиденциальности",
-        agree: "Отправляя сообщение Imzo AI, вы соглашаетесь с нашими",
-        loginRequired: "Для отправки вопросов сначала войдите в систему",
-        failedtocreatechatroom: "Ошибка при создании нового чата",
-        pleasecreatechatroom: "Пожалуйста, создайте новый чат",
-        failedtosendmessage: "Ошибка при отправке сообщения",
-        rateLimitError: "Слишком много запросов. Подождите немного.",
-        serverError: "Произошла ошибка сервера. Попробуйте позже.",
-        networkError: "Проверьте подключение к интернету.",
-        tokenError: "Токен аутентификации не найден. Пожалуйста, войдите снова.",
-        enterName: "Введите ваше имя",
-        save: "Сохранить",
-        cancel: "Отмена",
-        nameRequired: "Пожалуйста, введите ваше имя!",
-        nameUpdateError: "Ошибка при сохранении имени!",
-      },
-    },
-  },
-  lng: "uz",
-  fallbackLng: "uz",
-  interpolation: {
-    escapeValue: false,
-  },
-})
+import ChatInput from "./chatInput";
+import ChatMessage from "./chatMessages";
+import SidebarIcons from "./sidebar/sidebarIcons";
+import SidebarContent from "./sidebar/sidebarContext";
 
-const API_BASE_URL = "https://imzo-ai.uzjoylar.uz"
-
-const Header = ({ t, isAuthenticated, navigate, changeLanguage, toggleSidebar, toggleHistoryPanel }) => (
-  <div className="flex justify-between items-center bg-gray-900/65 backdrop-blur-sm border-b border-gray-800 px-4 py-3 lg:px-6 lg:py-4">
-    <div className="flex items-center space-x-3 lg:space-x-4">
-      <h1 className="text-lg lg:text-xl font-bold text-white">{t("chatgpt")}</h1>
-      <span className="hidden lg:inline text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
-    </div>
-    <div className="flex items-center space-x-2 lg:space-x-4">
-      {isAuthenticated ? (
-        <UserDropdown />
-      ) : (
-        <button
-          onClick={() => navigate("/login")}
-          className="bg-white hover:bg-blue-700 text-black px-3 py-1 rounded-md font-medium text-sm lg:px-4 lg:py-2 lg:rounded-lg transition-colors duration-200"
-        >
-          {t("login")}
-        </button>
-      )}
-      <select
-        defaultValue="uz"
-        onChange={(e) => changeLanguage(e.target.value)}
-        className="bg-gray-900/65 text-white border border-gray-700 rounded-md px-2 py-1 text-xs lg:px-3 lg:py-2 lg:rounded-lg lg:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="uz">UZ</option>
-        <option value="ru">RU</option>
-      </select>
-      <button
-        onClick={toggleHistoryPanel}
-        className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-    </div>
-  </div>
-)
-const ChatInput = ({ message, setMessage, isAuthenticated, user, loading, handleSend, t, setIsModalVisible, isMobile }) => (
-  <div className="px-4 pb-4 lg:px-6 lg:pb-6">
-    <div className="max-w-full mx-auto lg:max-w-4xl">
-      <div className="bg-gray-900/45 border border-gray-700 rounded-2xl p-3 lg:p-4 backdrop-blur-sm">
-        <div className="flex items-end space-x-2 lg:space-x-4">
-          <div className="flex-1">
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder={isAuthenticated && user?.full_name ? t("askanything") : t("askanything")}
-              disabled={loading}
-              className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none min-h-[20px] max-h-24 text-sm lg:max-h-32"
-              style={{ height: 'auto' }}
-              onInput={(e) => {
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  if (isAuthenticated && user?.full_name) {
-                    handleSend()
-                  } else {
-                    setIsModalVisible(true)
-                  }
-                }
-              }}
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            {isMobile ? (
-              <button
-                onClick={() => {
-                  if (isAuthenticated && user?.full_name) {
-                    handleSend()
-                  } else {
-                    setIsModalVisible(true)
-                  }
-                }}
-                disabled={!message.trim() || loading}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            ) : (
-              <>
-                <button
-                  disabled
-                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                </button>
-                <button
-                  disabled
-                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-                <button
-                  disabled
-                  className="p-2 text-gray-500 hover:text-gray-400 transition-colors duration-200 disabled:opacity-50"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    if (isAuthenticated && user?.full_name) {
-                      handleSend()
-                    } else {
-                      setIsModalVisible(true)
-                    }
-                  }}
-                  disabled={!message.trim() || loading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all duration-200"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)
-
-const TypingAnimation = () => (
-  <div className="flex items-center space-x-1">
-    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
-    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-  </div>
-)
-
-const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoading, isMobile }) => (
-  <div className="mb-4 max-w-full mx-auto space-y-2 lg:mb-6 lg:max-w-4xl lg:space-y-4">
-    <div className="flex justify-end items-start space-x-2 space-x-reverse lg:space-x-3">
-      <div className="bg-blue-600 border border-blue-700 rounded-xl px-3 py-2 max-w-[70%] shadow-sm text-sm lg:px-4 lg:py-3">
-        <p className="text-white leading-relaxed">{message}</p>
-      </div>
-      <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 lg:w-8 lg:h-8">
-        <span className="text-xs font-medium text-white lg:text-sm">You</span>
-      </div>
-    </div>
-    {(initialAssistantMessage || finalResponse || isLoading) && (
-      <div className="flex justify-start items-start space-x-2 lg:space-x-3">
-        <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 lg:w-8 lg:h-8">
-          <span className="text-xs font-bold text-white lg:text-sm">AI</span>
-        </div>
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-3 py-2 max-w-[70%] shadow-sm text-sm lg:px-4 lg:py-3">
-          <div className="text-gray-100 leading-relaxed space-y-1 lg:space-y-2">
-            {initialAssistantMessage && <p>{initialAssistantMessage}</p>}
-            {isLoading ? (
-              <TypingAnimation />
-            ) : (
-              finalResponse && <div>{finalResponse}</div>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)
-
-const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, chatRoomId, conversations, createChatRoom, loading, isAuthenticated, user, t }) => {
-  const HistoryPanel = () => (
-    <div className="flex-1 overflow-y-auto chat-container p-3 lg:p-4">
-      <div className="space-y-2">
-        <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">TODAY</h4>
-          {isAuthenticated && user?.full_name && conversations
-            .filter(conv => true)
-            .slice(0, 3)
-            .map((conv) => (
-              <div
-                key={conv.id}
-                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
-                onClick={() => {
-                  fetchChatHistory(conv.id);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
-              </div>
-            ))}
-        </div>
-        <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">YESTERDAY</h4>
-          {isAuthenticated && user?.full_name && conversations
-            .slice(3, 8)
-            .map((conv) => (
-              <div
-                key={conv.id}
-                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"}`}
-                onClick={() => {
-                  fetchChatHistory(conv.id);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
-              </div>
-            ))}
-        </div>
-        <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">PREVIOUS</h4>
-          {isAuthenticated && user?.full_name && conversations
-            .slice(8)
-            .map((conv) => (
-              <div
-                key={conv.id}
-                className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
-                onClick={() => {
-                  fetchChatHistory(conv.id);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-              >
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span className="text-gray-300 text-xs truncate lg:text-sm">{conv.title}</span>
-              </div>
-            ))}
-        </div>
-      </div>
-      {!isAuthenticated && (
-        <div className="text-center mt-4 lg:mt-8">
-          <p className="text-gray-500 text-sm">{t("loginRequired")}</p>
-        </div>
-      )}
-    </div>
-  );
-
-  if (activeTab === "history") {
-    return <HistoryPanel />;
-  } else if (activeTab === "categories") {
-    return (
-      <CategorySidebar
-        onCategorySelect={(category, item) => {
-          console.log("Selected category:", category, "item:", item);
-          setIsSidebarOpen(false);
-        }}
-      />
-    );
-  }
-  return null;
-});
+const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
 
 function Dashboard() {
   const { t } = useTranslation();
-  const { isAuthenticated, user, login, refreshAccessToken } = useAuth();
+  const { isAuthenticated, user, login } = useAuth();
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
-  const [chatRoomId, setChatRoomId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
@@ -367,6 +36,7 @@ function Dashboard() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
+  const { chatId } = useParams();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -380,27 +50,6 @@ function Dashboard() {
     setIsHistoryOpen(!isHistoryOpen);
     setIsSidebarOpen(!isHistoryOpen);
   };
-
-  const SidebarIcons = () => (
-    <div className="flex flex-col items-center py-2 border-b border-gray-800 lg:py-4">
-      <button
-        onClick={() => setActiveTab("history")}
-        className={`p-2 rounded-lg mb-1 transition-colors duration-200 lg:p-3 lg:mb-2 ${activeTab === "history" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
-      >
-        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      </button>
-      <button
-        onClick={() => setActiveTab("categories")}
-        className={`p-2 rounded-lg transition-colors duration-200 lg:p-3 ${activeTab === "categories" ? "bg-gray-900/85 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900/65"}`}
-      >
-        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-    </div>
-  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -423,8 +72,11 @@ function Dashboard() {
   useEffect(() => {
     if (isAuthenticated && user?.full_name) {
       fetchChatRooms();
+      if (chatId) {
+        fetchChatHistory(chatId);
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, chatId]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -487,7 +139,6 @@ function Dashboard() {
         finalResponse: null,
         isLoading: false
       })));
-      setChatRoomId(roomId);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
           if (chat.response) {
@@ -517,10 +168,10 @@ function Dashboard() {
       const response = await axios.post(`${API_BASE_URL}/chat/room/create`, { user_id: userId });
       const newRoomId = response.data.ID;
       await fetchChatRooms();
-      setChatRoomId(newRoomId);
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
+      navigate(`/dashboard/${newRoomId}`);
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -541,7 +192,7 @@ function Dashboard() {
       return;
     }
 
-    let currentChatRoomId = chatRoomId;
+    let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
       currentChatRoomId = await createChatRoom();
       if (!currentChatRoomId) {
@@ -694,7 +345,6 @@ function Dashboard() {
     <div className="h-screen bg-black/85 flex flex-col text-white">
       <div className="block md:hidden">
         <Header
-          t={t}
           isAuthenticated={isAuthenticated}
           navigate={navigate}
           changeLanguage={changeLanguage}
@@ -708,7 +358,6 @@ function Dashboard() {
         >
           <div className="hidden md:block">
             <Header
-              t={t}
               isAuthenticated={isAuthenticated}
               navigate={navigate}
               changeLanguage={changeLanguage}
@@ -717,18 +366,18 @@ function Dashboard() {
             />
           </div>
           <div className="h-full w-full flex">
-            <SidebarIcons />
+            <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
             <SidebarContent
               activeTab={activeTab}
               setIsSidebarOpen={setIsSidebarOpen}
               fetchChatHistory={fetchChatHistory}
-              chatRoomId={chatRoomId}
+              chatRoomId={chatId}
               conversations={conversations}
               createChatRoom={createChatRoom}
               loading={loading}
               isAuthenticated={isAuthenticated}
               user={user}
-              t={t}
+              navigate={navigate}
             />
           </div>
         </div>
@@ -740,7 +389,7 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">Please log in to start chatting.</p>
               </div>
             )}
-            {isAuthenticated && chatHistory.length === 0 && (
+            {isAuthenticated && chatHistory.length === 0 && !chatId && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
@@ -765,7 +414,6 @@ function Dashboard() {
             user={user}
             loading={loading}
             handleSend={handleSend}
-            t={t}
             setIsModalVisible={setIsLoginModalVisible}
             isMobile={isMobile}
           />

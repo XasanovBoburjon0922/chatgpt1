@@ -1,9 +1,10 @@
-import React from "react"
-import ReactDOM from "react-dom/client"
-import { ConfigProvider, theme } from "antd"
-import App from "./App.jsx"
-import "./index.css"
-import { BrowserRouter } from "react-router-dom"
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ConfigProvider, theme } from "antd";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App.jsx";
+import "./index.css";
+import "./18n/18n.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -21,5 +22,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <App />
       </BrowserRouter>
     </ConfigProvider>
-  </React.StrictMode>,  
-)
+  </React.StrictMode>
+);
