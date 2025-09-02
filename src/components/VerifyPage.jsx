@@ -53,7 +53,7 @@ function VerifyPage() {
           } else {
             login(response.data.userInfo, response.data.token);
             toast.success("Muvaffaqiyatli kirildi!");
-            navigate("/dashboard");
+            navigate("/");
           }
         } else if (response.data.valid === false) {
           toast.error("Kod noto'g'ri yoki muddati o'tgan!");
