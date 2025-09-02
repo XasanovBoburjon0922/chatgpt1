@@ -18,7 +18,7 @@ const UserDropdown = () => {
         break;
       case 'logout':
         logout();
-        navigate("/dashboard");
+        navigate("/");
         break;
       default:
         break;

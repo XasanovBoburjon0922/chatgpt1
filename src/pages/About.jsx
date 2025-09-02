@@ -19,7 +19,7 @@ const About = () => {
             Version 1.20 | © 2025 Imzo AI. All rights reserved.
           </p>
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/")}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm lg:px-6 lg:py-3 transition-colors duration-200"
           >
             Back to Dashboard

@@ -171,7 +171,7 @@ function Dashboard() {
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
-      navigate(`/dashboard/${newRoomId}`);
+      navigate(`/c/${newRoomId}`);
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);

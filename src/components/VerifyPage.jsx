@@ -153,7 +153,7 @@ function VerifyPage() {
       toast.success("Ism muvaffaqiyatli saqlandi!");
       setIsModalVisible(false);
       login({ id: userId, full_name: fullName, phone_number: phoneNumber }, localStorage.getItem("access_token"));
-      navigate("/dashboard");
+      navigate("/");
     } catch (error) {
       console.error("Error updating full name:", error);
       toast.error("Ismni saqlashda xatolik yuz berdi!");

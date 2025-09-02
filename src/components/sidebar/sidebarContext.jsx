@@ -38,7 +38,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 key={conv.id}
                 className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"}`}
                 onClick={() => {
-                  navigate(`/dashboard/${conv.id}`);
+                  navigate(`/c/${conv.id}`);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
               >
