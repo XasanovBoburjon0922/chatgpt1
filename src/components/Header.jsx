@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import UserDropdown from "./UserDropdown";
+import UserDropdown from "./userDropdown";
 
 const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, toggleHistoryPanel }) => {
   const { t, i18n } = useTranslation();
