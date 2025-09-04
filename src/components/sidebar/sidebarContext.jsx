@@ -9,7 +9,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
     <div className="flex-1 overflow-y-auto chat-container p-3 lg:p-4">
       <div className="space-y-2">
         <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">TODAY</h4>
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">{t("today")}</h4>
           {isAuthenticated && user?.full_name && conversations
             .filter(conv => true)
             .slice(0, 3)
@@ -19,6 +19,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   navigate(`/c/${conv.id}`);
+                  fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
               >
@@ -30,7 +31,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
             ))}
         </div>
         <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">YESTERDAY</h4>
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">{t("yesterday")}</h4>
           {isAuthenticated && user?.full_name && conversations
             .slice(3, 8)
             .map((conv) => (
@@ -39,6 +40,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"}`}
                 onClick={() => {
                   navigate(`/c/${conv.id}`);
+                  fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
               >
@@ -50,7 +52,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
             ))}
         </div>
         <div className="mb-3 lg:mb-4">
-          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">PREVIOUS</h4>
+          <h4 className="text-gray-500 text-xs uppercase font-semibold mb-1 lg:mb-2">{t("previous")}</h4>
           {isAuthenticated && user?.full_name && conversations
             .slice(8)
             .map((conv) => (
@@ -59,6 +61,7 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
                 className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
                 onClick={() => {
                   navigate(`/c/${conv.id}`);
+                  fetchChatHistory(conv.id);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
               >
@@ -88,6 +91,12 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
           setIsSidebarOpen(false);
         }}
       />
+    );
+  } else if (activeTab === "ekspertiza") {
+    return (
+      <div className="flex-1 p-3 lg:p-4 text-center">
+        <p className="text-gray-300 text-sm">{t("ekspertizaSidebarPrompt")}</p>
+      </div>
     );
   } else if (activeTab === "about") {
     return null;

@@ -92,13 +92,18 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-    
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+
+    if (date.toDateString() === yesterday.toDateString()) {
+      return `Kecha ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} minut oldin`;
     } else if (diffInMinutes < 1440) {
-      return `${Math.floor(diffInMinutes / 60)}h ago`;
+      return `${Math.floor(diffInMinutes / 60)} soat oldin`;
     } else {
-      return `${Math.floor(diffInMinutes / 1440)}d ago`;
+      return `${Math.floor(diffInMinutes / 1440)} kun oldin`;
     }
   };
 
@@ -168,7 +173,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-96 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-100">
                 <div className="px-4 py-3 border-b border-gray-700">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-white">{t("notifications") || "Notifications"}</h3>
@@ -183,7 +188,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
                   </div>
                 </div>
 
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-80 overflow-y-auto chat-container">
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
