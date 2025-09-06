@@ -92,12 +92,6 @@ const SidebarContent = memo(({ activeTab, setIsSidebarOpen, fetchChatHistory, ch
         }}
       />
     );
-  } else if (activeTab === "ekspertiza") {
-    return (
-      <div className="flex-1 p-3 lg:p-4 text-center">
-        <p className="text-gray-300 text-sm">{t("ekspertizaSidebarPrompt")}</p>
-      </div>
-    );
   } else if (activeTab === "about") {
     return null;
   }

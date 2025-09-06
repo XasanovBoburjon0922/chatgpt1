@@ -15,225 +15,6 @@ import SidebarContent from "./sidebar/sidebarContext";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
 
-function Ekspertiza({ isAuthenticated, user, navigate, t }) {
-  const [file, setFile] = useState(null);
-  const [question, setQuestion] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [analysisResponse, setAnalysisResponse] = useState(null);
-  const [displayedAnalysis, setDisplayedAnalysis] = useState("");
-  const [newAnalysis, setNewAnalysis] = useState(null);
-
-  useEffect(() => {
-    if (newAnalysis?.response) {
-      let currentText = "";
-      const fullText = newAnalysis.response;
-      let index = 0;
-
-      const type = () => {
-        if (index < fullText.length) {
-          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
-          currentText += fullText.slice(index, index + step);
-          setDisplayedAnalysis(currentText);
-          index += step;
-          setTimeout(type, 30);
-        } else {
-          setNewAnalysis(null);
-        }
-      };
-      type();
-    }
-  }, [newAnalysis]);
-
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    const allowedTypes = [
-      "application/pdf",
-      "text/plain",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    if (selectedFile && allowedTypes.includes(selectedFile.type)) {
-      setFile(selectedFile);
-      setError("");
-    } else {
-      setFile(null);
-      setError(t("invalidFileType"));
-    }
-  };
-
-  const pollForAnalysisResponse = async (analysisId) => {
-    const maxAttempts = 1000;
-    const delay = 14000;
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.error("Access token not found");
-      navigate("/login");
-      throw new Error("Access token not found");
-    }
-
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/get/pdf/analysis/${analysisId}`, {
-          headers: {
-            Authorization: `${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 200 && response.data.response) {
-          return response.data;
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-        if (error.response?.status === 401) {
-          navigate("/login");
-          throw error;
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    throw new Error("Analysis response not received in time");
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file || !question) {
-      setError(t("fileAndQuestionRequired"));
-      return;
-    }
-
-    if (!isAuthenticated || !user?.full_name) {
-      navigate("/login");
-      return;
-    }
-
-    setIsLoading(true);
-    setError("");
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("question", question);
-
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        console.error("Access token not found");
-        navigate("/login");
-        return;
-      }
-
-      const response = await axios.post(`${API_BASE_URL}/get/pdf/analysis`, formData, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.status === 200) {
-        const { id } = response.data;
-        const analysisData = await pollForAnalysisResponse(id);
-        setAnalysisResponse({
-          question,
-          response: analysisData.response,
-        });
-        setNewAnalysis({ response: analysisData.response });
-        setFile(null);
-        setQuestion("");
-        e.target.reset();
-        toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
-      }
-    } catch (err) {
-      console.error("Error submitting file and question:", err);
-      setError(err.message || t("submissionError"));
-      toast.error(t("submissionError"), { theme: "dark", position: "top-center" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const renderAnalysisResponse = (responseText) => {
-    if (!responseText) return null;
-
-    const lines = responseText.split(/\n+/).filter((line) => line.trim());
-
-    return lines.map((line, index) => {
-      let formattedLine = line;
-      formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
-      const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
-      if (isListItem) {
-        formattedLine = formattedLine.replace(/^[-*]\s+/, "");
-        return (
-          <li key={index} className="ml-4 text-gray-200 mb-1">
-            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-          </li>
-        );
-      }
-
-      return (
-        <p key={index} className="mb-1 text-gray-200 leading-relaxed lg:mb-2">
-          <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-        </p>
-      );
-    });
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto p-6 bg-black/85 rounded-lg shadow-sm text-white">
-      <h2 className="text-2xl font-bold text-white mb-6">{t("ekspertiza")}</h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            {t("uploadFile")}
-          </label>
-          <input
-            type="file"
-            accept=".pdf,.txt,.doc,.docx"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            {t("question")}
-          </label>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t("enterQuestion")}
-            className="w-full p-3 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-white bg-gray-900/50 text-white placeholder-gray-500"
-            rows="4"
-          />
-        </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all duration-200 ${
-            isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"
-          }`}
-        >
-          {isLoading ? t("submitting") : t("submit")}
-        </button>
-      </form>
-      {analysisResponse && (
-        <div className="mt-6">
-          <h3 className="text-lg font-bold text-white mb-3">{t("analysisResult")}</h3>
-          <div className="bg-gray-900/50 p-4 rounded-lg">
-            <p className="text-gray-200 mb-2">
-              <strong>{t("question")}:</strong> {analysisResponse.question}
-            </p>
-            <div>{renderAnalysisResponse(displayedAnalysis)}</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Dashboard() {
   const { t, i18n } = useTranslation();
   const { isAuthenticated, user, login } = useAuth();
@@ -270,6 +51,128 @@ function Dashboard() {
     setIsSidebarOpen(!isHistoryOpen);
   };
 
+  const handleFileUpload = async (file, question) => {
+    if (!file || !question) {
+      toast.error(t("fileAndQuestionRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
+
+    if (!isAuthenticated || !user?.full_name) {
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("question", question);
+
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.post(`${API_BASE_URL}/get/pdf/analysis`, formData, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.status === 200) {
+        const { id } = response.data;
+        const newMessage = {
+          request: question,
+          initialAssistantMessage: null,
+          finalResponse: null,
+          isLoading: true,
+        };
+        setChatHistory([...chatHistory, newMessage]);
+
+        const analysisData = await pollForAnalysisResponse(id);
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, finalResponse: analysisData.responce, isLoading: false }
+              : item
+          )
+        );
+        setNewResponse({ request: question, response: analysisData.responce });
+        toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
+      }
+    } catch (err) {
+      console.error("Error submitting file and question:", err);
+      toast.error(err.message || t("submissionError"), { theme: "dark", position: "top-center" });
+      setChatHistory((prev) =>
+        prev.map((item, index) =>
+          index === prev.length - 1
+            ? { ...item, finalResponse: err.message || t("submissionError"), isLoading: false }
+            : item
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pollForAnalysisResponse = async (analysisId) => {
+    const maxAttempts = 30; // Reduced for faster timeout (2 minutes at 4s interval)
+    const delay = 4000; // Reduced to 4 seconds for faster polling
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("Access token not found");
+      navigate("/login");
+      throw new Error("Access token not found");
+    }
+
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/get/pdf/analysis/${analysisId}`, {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log(`Polling attempt ${i + 1}:`, response.data); // Debug log
+
+        if (response.status === 200) {
+          // Check if response exists and is not null/empty
+          if (response.data.responce && response.data.responce.trim() !== "") {
+            return response.data;
+          }
+          // Check for a status field indicating completion (adjust based on actual API response)
+          if (response.data.status === "completed") {
+            return response.data;
+          }
+          // If response is null/empty but status is pending, continue polling
+          if (response.data.status === "pending" || !response.data.responce) {
+            console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
+          }
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+        if (error.response?.status === 401) {
+          navigate("/login");
+          throw error;
+        }
+        // Log other errors but continue polling unless critical
+        console.error(`Polling attempt ${i + 1} failed:`, error.message);
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    // Timeout after max attempts
+    const errorMessage = t("analysisTimeout");
+    toast.error(errorMessage, { theme: "dark", position: "top-center" });
+    throw new Error(errorMessage);
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 1024);
@@ -289,13 +192,13 @@ function Dashboard() {
   }, [isAuthenticated, user, pendingMessage]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && location.pathname !== "/ekspertiza") {
+    if (isAuthenticated && user?.full_name) {
       fetchChatRooms();
       if (chatId) {
         fetchChatHistory(chatId);
       }
     }
-  }, [isAuthenticated, user, chatId, location.pathname]);
+  }, [isAuthenticated, user, chatId]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -648,21 +551,19 @@ function Dashboard() {
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
         return (
-          <li key={index} className="ml-4 text-gray-200 mb-1">
+          <li key={index} className="ml-4 text-gray-100 mb-1">
             <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
           </li>
         );
       }
 
       return (
-        <p key={index} className="mb-1 text-gray-200 leading-relaxed lg:mb-2">
+        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
       );
     });
   };
-
-  const isEkspertizaRoute = location.pathname === "/ekspertiza";
 
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
@@ -677,7 +578,9 @@ function Dashboard() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
+          className={`${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
           <div className="hidden md:block">
             <Header
@@ -705,51 +608,47 @@ function Dashboard() {
           </div>
         </div>
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 lg:px-[100px] lg:py-6 chat-container" ref={chatContainerRef}>
+          <div
+            className="flex-1 overflow-y-auto p-4 lg:px-[100px] lg:py-6 chat-container"
+            ref={chatContainerRef}
+          >
             {!isAuthenticated && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome to Imzo AI</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("pleaseLogin")}</p>
               </div>
             )}
-            {isAuthenticated && !isEkspertizaRoute && chatHistory.length === 0 && !chatId && (
+            {isAuthenticated && chatHistory.length === 0 && !chatId && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated && !isEkspertizaRoute &&
+            {isAuthenticated &&
               chatHistory.map((chat, index) => (
                 <ChatMessage
                   key={index}
                   message={chat.request}
                   initialAssistantMessage={chat.initialAssistantMessage}
-                  finalResponse={renderAssistantResponse(displayedResponse[chat.request] || chat.finalResponse)}
+                  finalResponse={renderAssistantResponse(
+                    displayedResponse[chat.request] || chat.finalResponse
+                  )}
                   isLoading={chat.isLoading}
                   isMobile={isMobile}
                 />
               ))}
-            {isAuthenticated && isEkspertizaRoute && (
-              <Ekspertiza
-                isAuthenticated={isAuthenticated}
-                user={user}
-                navigate={navigate}
-                t={t}
-              />
-            )}
           </div>
-          {!isEkspertizaRoute && (
-            <ChatInput
-              message={message}
-              setMessage={setMessage}
-              isAuthenticated={isAuthenticated}
-              user={user}
-              loading={loading}
-              handleSend={handleSend}
-              setIsModalVisible={setIsLoginModalVisible}
-              isMobile={isMobile}
-            />
-          )}
+          <ChatInput
+            message={message}
+            setMessage={setMessage}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            loading={loading}
+            handleSend={handleSend}
+            handleFileUpload={handleFileUpload}
+            setIsModalVisible={setIsLoginModalVisible}
+            isMobile={isMobile}
+          />
         </div>
       </div>
       {(isSidebarOpen || isHistoryOpen) && (

@@ -8,7 +8,6 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
 
   // Determine active tab based on the current route
   const getActiveTab = () => {
-    if (location.pathname === '/ekspertiza') return 'ekspertiza';
     if (location.pathname === '/about') return 'about';
     if (location.pathname.startsWith('/c/') || location.pathname === '/') return 'history';
     if (location.pathname === '/categories') return 'categories';
@@ -43,31 +42,6 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
-      </button>
-
-      {/* Ekspertiza Button */}
-      <button
-        onClick={() => navigate('/ekspertiza')}
-        className={`p-2 rounded-lg mb-1 transition-colors duration-200 lg:p-3 lg:mb-2 ${
-          currentTab === 'ekspertiza'
-            ? 'bg-gray-900/85 text-white'
-            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/65'
-        }`}
-        title={t("ekspertiza")}
-      >
-        <svg
-          className="w-5 h-5 lg:w-6 lg:h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
       </button>

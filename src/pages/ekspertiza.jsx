@@ -75,7 +75,7 @@ const Ekspertiza = () => {
       const success = await fetchAnalysisResult(id)
       if (!success) {
         // If status is not 200, schedule next poll after 13 seconds
-        setTimeout(() => poll(), 13000)
+        setTimeout(() => poll(), 6000)
       }
     }
     poll() // Start polling immediately

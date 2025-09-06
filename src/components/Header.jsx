@@ -111,9 +111,6 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
-      // Set up interval to fetch notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
 
@@ -125,7 +122,6 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
       </div>
       
       <div className="flex items-center space-x-2 lg:space-x-4">
-        {/* Existing components */}
         {isAuthenticated ? (
           <UserDropdown />
         ) : (
@@ -154,7 +150,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        {/* Notifications */}
+        
         {isAuthenticated && (
           <div className="relative">
             <button
@@ -171,7 +167,6 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
               )}
             </button>
 
-            {/* Notifications Dropdown */}
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-100">
                 <div className="px-4 py-3 border-b border-gray-700">
@@ -244,7 +239,6 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
                   <div className="px-4 py-3 border-t border-gray-700 bg-gray-900/50">
                     <button
                       onClick={() => {
-                        // Mark all as read
                         notifications.forEach(notification => {
                           if (!notification.is_read) {
                             markAsRead(notification.id);

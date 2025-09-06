@@ -41,6 +41,13 @@ i18n.use(initReactI18next).init({
         "notifications": "Xabarnomalar",
         "no_notifications": "Xabarnomalar yo'q",
         "mark_all_read": "Hammasini o'qilgan deb belgilash",
+        "invalidFileType": "Noto'g'ri fayl turi. Faqat PDF, TXT, DOC yoki DOCX fayllari qabul qilinadi.",
+        "uploadFile": "Fayl yuklash",
+        "askAboutDocument": "Hujjat haqida so'rov yuboring",
+        "typeMessage": "Xabar yozing...",
+        "loginToChat": "Suhbatlashish uchun tizimga kiring",
+        "loginPrompt": "Imzo AI bilan davom etish uchun ro'yxatdan o'ting yoki tizimga kiring",
+        "pleaseLogin": "Iltimos, tizimga kiring"
       },
     },
     ru: {
@@ -77,7 +84,14 @@ i18n.use(initReactI18next).init({
         noCategories: "Категории не найдены",
         "notifications": "Уведомления",
         "no_notifications": "Нет уведомлений",
-        "mark_all_read": "Отметить все как прочитанные"
+        "mark_all_read": "Отметить все как прочитанные",
+        "invalidFileType": "Недопустимый тип файла. Поддерживаются только файлы PDF, TXT, DOC или DOCX.",
+        "uploadFile": "Загрузить файл",
+        "askAboutDocument": "Задайте вопрос о документе",
+        "typeMessage": "Введите сообщение...",
+        "loginToChat": "Войдите, чтобы начать чат",
+        "loginPrompt": "Войдите или зарегистрируйтесь, чтобы продолжить с Imzo AI",
+        "pleaseLogin": "Пожалуйста, войдите в систему"
       },
     },
   },
