@@ -254,7 +254,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+        console.log("errorcha");
       }
     } finally {
       setLoading(false);
@@ -305,7 +305,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        toast.error(t("serverError"), { theme: "dark", position: "top-center" });
+        console.log("errorcha");
       }
     } finally {
       setLoading(false);
@@ -441,7 +441,7 @@ function Dashboard() {
       } else if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        errorMessage = t("serverError");
+        console.log("serverError");
       }
 
       setChatHistory((prev) =>

@@ -1,7 +1,6 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-// Check for stored language in localStorage, default to "uz"
 const savedLanguage = localStorage.getItem("i18nextLng") || "uz";
 
 i18n.use(initReactI18next).init({

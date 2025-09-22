@@ -13,6 +13,7 @@ function VerifyPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false); // New state
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -47,7 +48,7 @@ function VerifyPage() {
       if (response.status === 200) {
         if (response.data && response.data.token) {
           localStorage.setItem("user_id", response.data.userInfo.id);
-          localStorage.setItem("access_token", response.data.token);
+          localStorage.setItem("access_token", response.data.token.access_token);
           if (!response.data.userInfo.full_name) {
             setIsModalVisible(true);
           } else {
@@ -66,8 +67,6 @@ function VerifyPage() {
         toast.error("Kod noto'g'ri yoki muddati o'tgan!");
       } else if (error.response?.status === 429) {
         toast.error("Juda ko'p urinish. Biroz kuting.");
-      } else if (error.response?.status >= 500) {
-        toast.error("Server xatoligi. Keyinroq urinib ko'ring.");
       } else {
         toast.error("Internet aloqasini tekshiring.");
       }
@@ -125,9 +124,6 @@ function VerifyPage() {
     try {
       setTimer(60);
       setCode(["", "", "", "", "", ""]);
-      // await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
-      //   phone_number: phoneNumber,
-      // });
       toast.success("Kod qayta yuborildi");
     } catch (error) {
       console.error("Resend code error:", error);
@@ -140,6 +136,8 @@ function VerifyPage() {
       toast.error("Iltimos, ismingizni kiriting!");
       return;
     }
+    if (isUpdating) return;
+    setIsUpdating(true);
     try {
       const userId = localStorage.getItem("user_id");
       await axios.put(`https://imzo-ai.uzjoylar.uz/users/update?id=${userId}`, {
@@ -157,6 +155,8 @@ function VerifyPage() {
     } catch (error) {
       console.error("Error updating full name:", error);
       toast.error("Ismni saqlashda xatolik yuz berdi!");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -277,9 +277,10 @@ ini tasdiqlang</h1>
                 </button>
                 <button
                   onClick={handleModalOk}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
+                  disabled={isUpdating}
+                  className={`flex-1 ${isUpdating ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-3 rounded-xl transition-all duration-200`}
                 >
-                  Saqlash
+                  {isUpdating ? "Saqlanmoqda..." : "Saqlash"}
                 </button>
               </div>
             </div>
