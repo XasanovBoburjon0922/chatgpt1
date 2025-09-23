@@ -14,7 +14,6 @@ import SidebarIcons from "./sidebar/sidebarIcons";
 import SidebarContent from "./sidebar/sidebarContext";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
-const WS_BASE_URL = "ws://31.187.74.228:8080/ws";
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
@@ -34,11 +33,6 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("history");
   const [pendingMessage, setPendingMessage] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [ws, setWs] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const maxReconnectAttempts = 5;
-  const reconnectDelay = 3000; // 3 seconds
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -56,83 +50,6 @@ function Dashboard() {
     setIsHistoryOpen(!isHistoryOpen);
     setIsSidebarOpen(!isHistoryOpen);
   };
-
-  // WebSocket connection management with reconnect
-  const connectWebSocket = () => {
-    if (!isAuthenticated || !user?.full_name || !chatId || reconnectAttempts >= maxReconnectAttempts) {
-      return;
-    }
-
-    const wsUrl = `${WS_BASE_URL}/${chatId}`;
-    const websocket = new WebSocket(wsUrl);
-    setWs(websocket);
-
-    websocket.onopen = () => {
-      console.log("WebSocket connected");
-      setIsConnected(true);
-      setReconnectAttempts(0); // Reset reconnect attempts on successful connection
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("Received message:", data);
-        if (data.type === "response" && data.response && typeof data.response === "string") {
-          const responseText = data.response.trim();
-          if (responseText) {
-            setNewResponse({
-              request: chatHistory[chatHistory.length - 1]?.request || message,
-              response: responseText,
-            });
-            setChatHistory((prev) =>
-              prev.map((item, index) =>
-                index === prev.length - 1
-                  ? { ...item, finalResponse: responseText, isLoading: false }
-                  : item
-              )
-            );
-          } else {
-            console.warn("Empty response received");
-          }
-        } else {
-          console.warn("Invalid message format:", data);
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-        toast.error(t("websocketMessageError"), { theme: "dark", position: "top-center" });
-      }
-    };
-
-    websocket.onclose = () => {
-      console.log("WebSocket disconnected");
-      setIsConnected(false);
-      if (reconnectAttempts < maxReconnectAttempts) {
-        setTimeout(() => {
-          setReconnectAttempts((prev) => prev + 1);
-          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
-          connectWebSocket();
-        }, reconnectDelay);
-      } else {
-        toast.error(t("websocketMaxReconnect"), { theme: "dark", position: "top-center" });
-      }
-    };
-
-    websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      websocket.close(); // Force close to trigger onclose and reconnect
-    };
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && user?.full_name && chatId) {
-      connectWebSocket();
-      return () => {
-        if (ws) {
-          ws.close();
-        }
-      };
-    }
-  }, [isAuthenticated, user, chatId]);
 
   const handleFileUpload = async (file, question) => {
     if (!file || !question) {
@@ -175,7 +92,7 @@ function Dashboard() {
           finalResponse: null,
           isLoading: true,
         };
-        setChatHistory((prev) => [...prev, newMessage]);
+        setChatHistory([...chatHistory, newMessage]);
 
         const analysisData = await pollForAnalysisResponse(id);
         setChatHistory((prev) =>
@@ -204,8 +121,8 @@ function Dashboard() {
   };
 
   const pollForAnalysisResponse = async (analysisId) => {
-    const maxAttempts = 30;
-    const delay = 4000;
+    const maxAttempts = 30; // Reduced for faster timeout (2 minutes at 4s interval)
+    const delay = 4000; // Reduced to 4 seconds for faster polling
     const token = localStorage.getItem("access_token");
     if (!token) {
       console.error("Access token not found");
@@ -222,15 +139,18 @@ function Dashboard() {
           },
         });
 
-        console.log(`Polling attempt ${i + 1}:`, response.data);
+        console.log(`Polling attempt ${i + 1}:`, response.data); // Debug log
 
         if (response.status === 200) {
+          // Check if response exists and is not null/empty
           if (response.data.responce && response.data.responce.trim() !== "") {
             return response.data;
           }
+          // Check for a status field indicating completion (adjust based on actual API response)
           if (response.data.status === "completed") {
             return response.data;
           }
+          // If response is null/empty but status is pending, continue polling
           if (response.data.status === "pending" || !response.data.responce) {
             console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
           }
@@ -241,11 +161,13 @@ function Dashboard() {
           navigate("/login");
           throw error;
         }
+        // Log other errors but continue polling unless critical
         console.error(`Polling attempt ${i + 1} failed:`, error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
+    // Timeout after max attempts
     const errorMessage = t("analysisTimeout");
     toast.error(errorMessage, { theme: "dark", position: "top-center" });
     throw new Error(errorMessage);
@@ -274,9 +196,6 @@ function Dashboard() {
       fetchChatRooms();
       if (chatId) {
         fetchChatHistory(chatId);
-      } else {
-        setChatHistory([]);
-        setDisplayedResponse({});
       }
     }
   }, [isAuthenticated, user, chatId]);
@@ -296,18 +215,12 @@ function Dashboard() {
 
       const type = () => {
         if (index < fullText.length) {
-          currentText += fullText[index]; // Add one character at a time
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
+          currentText += fullText.slice(index, index + step);
           setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += 1;
-          setTimeout(type, 30); // 30ms delay per character for slow typing
+          index += step;
+          setTimeout(type, 30);
         } else {
-          setChatHistory((prev) =>
-            prev.map((item) =>
-              item.request === request
-                ? { ...item, finalResponse: fullText, isLoading: false }
-                : item
-            )
-          );
           setNewResponse(null);
         }
       };
@@ -341,7 +254,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        toast.error(t("failedtofetchchatrooms"), { theme: "dark", position: "top-center" });
+        console.log("errorcha");
       }
     } finally {
       setLoading(false);
@@ -349,7 +262,7 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId) {
+    if (!isAuthenticated || !user?.full_name) {
       return;
     }
 
@@ -370,14 +283,14 @@ function Dashboard() {
       });
 
       const history = response.data.chats || [];
-      const newChatHistory = history.map((chat) => ({
-        request: chat.request,
-        initialAssistantMessage: null,
-        finalResponse: chat.response || null,
-        isLoading: false,
-      }));
-
-      setChatHistory(newChatHistory);
+      setChatHistory(
+        history.map((chat) => ({
+          request: chat.request,
+          initialAssistantMessage: chat.response,
+          finalResponse: null,
+          isLoading: false,
+        }))
+      );
       setDisplayedResponse(
         history.reduce((acc, chat) => {
           if (chat.response) {
@@ -392,7 +305,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        toast.error(t("failedtofetchhistory"), { theme: "dark", position: "top-center" });
+        console.log("errorcha");
       }
     } finally {
       setLoading(false);
@@ -466,28 +379,116 @@ function Dashboard() {
       finalResponse: null,
       isLoading: true,
     };
-    setChatHistory((prev) => [...prev, newMessage]);
+    setChatHistory([...chatHistory, newMessage]);
     setMessage("");
     setLoading(true);
 
     try {
-      if (ws && isConnected) {
-        ws.send(JSON.stringify({ message: message, type: "request" }));
-      } else {
-        throw new Error(t("websocketNotConnected"));
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        console.error("Access token not found");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/ask`,
+        {
+          chat_room_id: currentChatRoomId,
+          request: message,
+        },
+        {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const { id, message: apiMessage } = response.data;
+
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, initialAssistantMessage: apiMessage || "", isLoading: true }
+              : item
+          )
+        );
+
+        const responseData = await pollForResponse(id);
+        const finalResponse = responseData.response;
+
+        setChatHistory((prev) =>
+          prev.map((item, index) =>
+            index === prev.length - 1
+              ? { ...item, finalResponse: finalResponse, isLoading: false }
+              : item
+          )
+        );
+        setNewResponse({ request: message, response: finalResponse });
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error(error.message || t("failedtosendmessage"), { theme: "dark", position: "top-center" });
+      let errorMessage = t("failedtosendmessage");
+      if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || t("failedtosendmessage");
+      } else if (
+        error.response?.status === 500 &&
+        error.response.data?.error === "kunlik request limiti tugadi"
+      ) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
+        console.log("serverError");
+      }
+
       setChatHistory((prev) =>
         prev.map((item, index) =>
           index === prev.length - 1
-            ? { ...item, finalResponse: error.message || t("failedtosendmessage"), isLoading: false }
+            ? { ...item, finalResponse: errorMessage, isLoading: false }
             : item
         )
       );
+      setNewResponse({ request: message, response: errorMessage });
+    } finally {
       setLoading(false);
     }
+  };
+
+  const pollForResponse = async (requestId) => {
+    const maxAttempts = 1000;
+    const delay = 14000;
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("Access token not found");
+      navigate("/login");
+      throw new Error("Access token not found");
+    }
+
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`, {
+          headers: {
+            Authorization: `${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.status === 200 && response.data.response) {
+          return response.data;
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+        if (error.response?.status === 401) {
+          navigate("/login");
+          throw error;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    throw new Error("Response not received in time");
   };
 
   const handleNameModalOk = async () => {
@@ -540,12 +541,10 @@ function Dashboard() {
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
 
-    // Split text into lines, preserving partial input
     const lines = responseText.split(/\n+/).filter((line) => line.trim());
 
     return lines.map((line, index) => {
       let formattedLine = line;
-      // Apply Markdown formatting (bold and italics)
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");

@@ -39,7 +39,11 @@ const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoadin
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl px-3 py-2 max-w-[70%] shadow-sm text-sm lg:px-4 lg:py-3">
             <div className="text-gray-100 leading-relaxed space-y-1 lg:space-y-2">
               {initialAssistantMessage && <p>{initialAssistantMessage}</p>}
-              {isLoading ? <TypingAnimation /> : finalResponse && <div>{finalResponse}</div>}
+              {isLoading && !finalResponse ? (
+                <TypingAnimation />
+              ) : (
+                finalResponse && <div>{finalResponse}</div>
+              )}
             </div>
           </div>
         </div>

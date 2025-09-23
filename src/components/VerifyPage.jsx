@@ -12,8 +12,8 @@ function VerifyPage() {
   const [timer, setTimer] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isVerified, setIsVerified] = useState(false); // Block re-verification
   const [fullName, setFullName] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false); // New state
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -35,7 +35,7 @@ function VerifyPage() {
 
   const handleVerify = useCallback(async () => {
     const enteredCode = code.join("");
-    if (enteredCode.length !== 6 || isVerifying) return;
+    if (enteredCode.length !== 6 || isVerifying || isVerified) return;
 
     setIsVerifying(true);
 
@@ -48,7 +48,9 @@ function VerifyPage() {
       if (response.status === 200) {
         if (response.data && response.data.token) {
           localStorage.setItem("user_id", response.data.userInfo.id);
-          localStorage.setItem("access_token", response.data.token.access_token);
+          localStorage.setItem("access_token", response.data.token);
+          setIsVerified(true); // Block further verifications
+
           if (!response.data.userInfo.full_name) {
             setIsModalVisible(true);
           } else {
@@ -67,6 +69,8 @@ function VerifyPage() {
         toast.error("Kod noto'g'ri yoki muddati o'tgan!");
       } else if (error.response?.status === 429) {
         toast.error("Juda ko'p urinish. Biroz kuting.");
+      } else if (error.response?.status >= 500) {
+        toast.error("Server xatoligi. Keyinroq urinib ko'ring.");
       } else {
         toast.error("Internet aloqasini tekshiring.");
       }
@@ -74,26 +78,27 @@ function VerifyPage() {
     } finally {
       setIsVerifying(false);
     }
-  }, [code, isVerifying, phoneNumber, login, navigate]);
+  }, [code, isVerifying, isVerified, phoneNumber, login, navigate]);
 
   useEffect(() => {
     const enteredCode = code.join("");
-    if (enteredCode.length === 6 && !isVerifying) {
+    if (enteredCode.length === 6 && !isVerifying && !isVerified) {
       handleVerify();
     }
-  }, [code, isVerifying, handleVerify]);
+  }, [code, isVerifying, isVerified, handleVerify]);
 
   const handleChange = (index, value, event) => {
+    if (isVerifying || isModalVisible) return; // Block during verify or modal
+
     if (event.type === "paste") {
       const pastedData = event.clipboardData.getData("text").replace(/\D/g, "");
       if (pastedData.length === 6) {
         setCode(pastedData.split(""));
         document.getElementById(`code-input-5`)?.focus();
-        return;
       } else {
         toast.error("Iltimos, 6 raqamli kodni kiriting!");
-        return;
       }
+      return;
     }
 
     const newCode = [...code];
@@ -106,12 +111,15 @@ function VerifyPage() {
   };
 
   const handleKeyDown = (index, e) => {
+    if (isVerifying || isModalVisible) return; // Block during verify or modal
+
     if (e.key === "Backspace" && !code[index] && index > 0) {
       document.getElementById(`code-input-${index - 1}`)?.focus();
     }
   };
 
   const handlePaste = (event, index) => {
+    if (isVerifying || isModalVisible) return; // Block during verify or modal
     event.preventDefault();
     handleChange(index, event.clipboardData.getData("text"), event);
   };
@@ -121,9 +129,13 @@ function VerifyPage() {
   };
 
   const handleResendCode = async () => {
+    if (isVerifying || isVerified) return;
     try {
       setTimer(60);
       setCode(["", "", "", "", "", ""]);
+      // await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
+      //   phone_number: phoneNumber,
+      // });
       toast.success("Kod qayta yuborildi");
     } catch (error) {
       console.error("Resend code error:", error);
@@ -136,33 +148,38 @@ function VerifyPage() {
       toast.error("Iltimos, ismingizni kiriting!");
       return;
     }
-    if (isUpdating) return;
-    setIsUpdating(true);
     try {
       const userId = localStorage.getItem("user_id");
-      await axios.put(`https://imzo-ai.uzjoylar.uz/users/update?id=${userId}`, {
-        full_name: fullName,
-        phone_number: phoneNumber,
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      const token = localStorage.getItem("access_token");
+      await axios.put(
+        `https://imzo-ai.uzjoylar.uz/users/update?id=${userId}`,
+        {
+          full_name: fullName,
+          phone_number: phoneNumber,
         },
-      });
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       toast.success("Ism muvaffaqiyatli saqlandi!");
       setIsModalVisible(false);
-      login({ id: userId, full_name: fullName, phone_number: phoneNumber }, localStorage.getItem("access_token"));
+      setFullName("");
+      login({ id: userId, full_name: fullName, phone_number: phoneNumber }, token);
       navigate("/");
     } catch (error) {
       console.error("Error updating full name:", error);
       toast.error("Ismni saqlashda xatolik yuz berdi!");
-    } finally {
-      setIsUpdating(false);
     }
   };
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setFullName("");
+    setIsVerified(false); // Allow retry if canceled
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("access_token");
     navigate("/login");
   };
 
@@ -175,14 +192,12 @@ function VerifyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Toast Container */}
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="dark" />
 
-        {/* Back Button */}
         <button
           onClick={() => navigate("/login")}
           className="flex items-center text-gray-400 hover:text-white mb-8 transition-colors duration-200"
-          disabled={isVerifying}
+          disabled={isVerifying || isModalVisible}
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -190,23 +205,19 @@ function VerifyPage() {
           Back
         </button>
 
-        {/* Logo/Icon Section */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Telefon raqam
-
-ini tasdiqlang</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">Telefon raqamini tasdiqlang</h1>
           <p className="text-gray-400">
             <span className="text-white font-medium">{phoneNumberWithFormat}</span> raqamiga
             faollashtirish kodi bilan SMS yubordik.
           </p>
         </div>
 
-        {/* Verification Form */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
           <div className="flex justify-center gap-3 mb-8">
             {code.map((digit, index) => (
@@ -219,15 +230,15 @@ ini tasdiqlang</h1>
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={(e) => handlePaste(e, index)}
                 maxLength={1}
-                className="w-12 h-14 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                disabled={isVerifying}
+                className="w-12 h-14 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                disabled={isVerifying || isModalVisible}
               />
             ))}
           </div>
 
           <button
             onClick={handleTelegramRedirect}
-            disabled={isVerifying}
+            disabled={isVerifying || isModalVisible}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-all duration-200 mb-6"
           >
             Telegram orqali yuborish
@@ -241,8 +252,8 @@ ini tasdiqlang</h1>
             ) : (
               <button
                 onClick={handleResendCode}
-                disabled={isVerifying}
-                className="text-blue-400 hover:text-blue-300 transition-colors duration-200"
+                disabled={isVerifying || isVerified}
+                className="text-blue-400 hover:text-blue-300 transition-colors duration-200 disabled:text-gray-600 disabled:cursor-not-allowed"
               >
                 Kodni qayta yuborish
               </button>
@@ -256,7 +267,6 @@ ini tasdiqlang</h1>
           )}
         </div>
 
-        {/* Name Modal */}
         {isModalVisible && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
             <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">
@@ -277,10 +287,9 @@ ini tasdiqlang</h1>
                 </button>
                 <button
                   onClick={handleModalOk}
-                  disabled={isUpdating}
-                  className={`flex-1 ${isUpdating ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-3 rounded-xl transition-all duration-200`}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
                 >
-                  {isUpdating ? "Saqlanmoqda..." : "Saqlash"}
+                  Saqlash
                 </button>
               </div>
             </div>

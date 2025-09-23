@@ -38,7 +38,7 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
-  const reconnectDelay = 3000; // 3 seconds
+  const reconnectDelay = 3000; // 3 sekund
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -296,10 +296,11 @@ function Dashboard() {
 
       const type = () => {
         if (index < fullText.length) {
-          currentText += fullText[index]; // Add one character at a time
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
+          currentText += fullText.slice(index, index + step);
           setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += 1;
-          setTimeout(type, 30); // 30ms delay per character for slow typing
+          index += step;
+          setTimeout(type, 50);
         } else {
           setChatHistory((prev) =>
             prev.map((item) =>
@@ -540,12 +541,10 @@ function Dashboard() {
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
 
-    // Split text into lines, preserving partial input
     const lines = responseText.split(/\n+/).filter((line) => line.trim());
 
     return lines.map((line, index) => {
       let formattedLine = line;
-      // Apply Markdown formatting (bold and italics)
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
