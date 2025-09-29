@@ -39,6 +39,7 @@ function Dashboard() {
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
   const reconnectDelay = 3000; // 3 seconds
+  const connectionTimeout = 10000; // 10 seconds timeout for WebSocket connection
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -456,6 +457,22 @@ function Dashboard() {
     }
   };
 
+  const waitForWebSocketConnection = (websocket, timeout) => {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const checkConnection = () => {
+        if (websocket.readyState === WebSocket.OPEN) {
+          resolve();
+        } else if (Date.now() - startTime >= timeout) {
+          reject(new Error(t("websocketConnectionTimeout")));
+        } else {
+          setTimeout(checkConnection, 100);
+        }
+      };
+      checkConnection();
+    });
+  };
+
   const handleSend = async () => {
     if (!message.trim()) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
@@ -476,24 +493,31 @@ function Dashboard() {
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
-      // Create a new chat room if no chatId exists
-      currentChatRoomId = await createChatRoom();
-      if (!currentChatRoomId) {
-        return;
+      // Check if conversations exist; if so, use the first one
+      if (conversations.length > 0) {
+        currentChatRoomId = conversations[0].id;
+        navigate(`/c/${currentChatRoomId}`);
+        await fetchChatHistory(currentChatRoomId);
+      } else {
+        // Create a new chat room if no conversations exist
+        currentChatRoomId = await createChatRoom();
+        if (!currentChatRoomId) {
+          return;
+        }
+        navigate(`/c/${currentChatRoomId}`);
       }
-      navigate(`/c/${currentChatRoomId}`);
-      // Wait for WebSocket to connect with the new chatId
-      await new Promise((resolve) => {
-        const checkConnection = () => {
-          if (isConnected && ws) {
-            resolve();
-          } else {
-            connectWebSocket(currentChatRoomId);
-            setTimeout(checkConnection, 100);
-          }
-        };
-        checkConnection();
-      });
+      // Initiate WebSocket connection
+      connectWebSocket(currentChatRoomId);
+    }
+
+    // Wait for WebSocket to be fully connected
+    try {
+      await waitForWebSocketConnection(ws, connectionTimeout);
+    } catch (error) {
+      console.error("WebSocket connection failed:", error);
+      toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
+      setLoading(false);
+      return;
     }
 
     const newMessage = {
@@ -507,7 +531,7 @@ function Dashboard() {
     setLoading(true);
 
     try {
-      if (ws && isConnected) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ message: message, type: "request" }));
       } else {
         throw new Error(t("websocketNotConnected"));
