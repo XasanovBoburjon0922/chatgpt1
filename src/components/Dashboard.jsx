@@ -58,17 +58,23 @@ function Dashboard() {
   };
 
   // WebSocket connection management with reconnect
-  const connectWebSocket = () => {
-    if (!isAuthenticated || !user?.full_name || !chatId || reconnectAttempts >= maxReconnectAttempts) {
+  const connectWebSocket = (roomId) => {
+    if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
       return;
     }
 
-    const wsUrl = `${WS_BASE_URL}/${chatId}`;
+    // Close any existing WebSocket connection
+    if (ws) {
+      ws.close();
+      setWs(null);
+    }
+
+    const wsUrl = `${WS_BASE_URL}/${roomId}`;
     const websocket = new WebSocket(wsUrl);
     setWs(websocket);
 
     websocket.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connected to", wsUrl);
       setIsConnected(true);
       setReconnectAttempts(0); // Reset reconnect attempts on successful connection
     };
@@ -110,10 +116,11 @@ function Dashboard() {
         setTimeout(() => {
           setReconnectAttempts((prev) => prev + 1);
           console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
-          connectWebSocket();
+          connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
         toast.error(t("websocketMaxReconnect"), { theme: "dark", position: "top-center" });
+        setLoading(false);
       }
     };
 
@@ -125,10 +132,12 @@ function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name && chatId) {
-      connectWebSocket();
+      connectWebSocket(chatId);
       return () => {
         if (ws) {
           ws.close();
+          setWs(null);
+          setIsConnected(false);
         }
       };
     }
@@ -275,8 +284,10 @@ function Dashboard() {
       if (chatId) {
         fetchChatHistory(chatId);
       } else {
+        // Clear chat history when at root URL (/)
         setChatHistory([]);
         setDisplayedResponse({});
+        setNewResponse(null);
       }
     }
   }, [isAuthenticated, user, chatId]);
@@ -296,10 +307,11 @@ function Dashboard() {
 
       const type = () => {
         if (index < fullText.length) {
-          currentText += fullText[index]; // Add one character at a time
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
+          currentText += fullText.slice(index, index + step);
           setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += 1;
-          setTimeout(type, 30); // 30ms delay per character for slow typing
+          index += step;
+          setTimeout(type, 50);
         } else {
           setChatHistory((prev) =>
             prev.map((item) =>
@@ -425,11 +437,11 @@ function Dashboard() {
       );
 
       const newRoomId = response.data.ID;
+      console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
-      navigate(`/c/${newRoomId}`);
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -445,19 +457,43 @@ function Dashboard() {
   };
 
   const handleSend = async () => {
-    if (!message.trim() || !isAuthenticated || !user?.full_name) {
-      if (!user?.full_name) {
-        setIsNameModalVisible(true);
-      }
+    if (!message.trim()) {
+      toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setIsLoginModalVisible(true);
+      setPendingMessage(message);
+      return;
+    }
+
+    if (!user?.full_name) {
+      setIsNameModalVisible(true);
+      setPendingMessage(message);
       return;
     }
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
+      // Create a new chat room if no chatId exists
       currentChatRoomId = await createChatRoom();
       if (!currentChatRoomId) {
         return;
       }
+      navigate(`/c/${currentChatRoomId}`);
+      // Wait for WebSocket to connect with the new chatId
+      await new Promise((resolve) => {
+        const checkConnection = () => {
+          if (isConnected && ws) {
+            resolve();
+          } else {
+            connectWebSocket(currentChatRoomId);
+            setTimeout(checkConnection, 100);
+          }
+        };
+        checkConnection();
+      });
     }
 
     const newMessage = {
@@ -540,12 +576,10 @@ function Dashboard() {
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
 
-    // Split text into lines, preserving partial input
     const lines = responseText.split(/\n+/).filter((line) => line.trim());
 
     return lines.map((line, index) => {
       let formattedLine = line;
-      // Apply Markdown formatting (bold and italics)
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
@@ -619,25 +653,24 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("pleaseLogin")}</p>
               </div>
             )}
-            {isAuthenticated && chatHistory.length === 0 && !chatId && (
+            {isAuthenticated && !chatId && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated &&
-              chatHistory.map((chat, index) => (
-                <ChatMessage
-                  key={index}
-                  message={chat.request}
-                  initialAssistantMessage={chat.initialAssistantMessage}
-                  finalResponse={renderAssistantResponse(
-                    displayedResponse[chat.request] || chat.finalResponse
-                  )}
-                  isLoading={chat.isLoading}
-                  isMobile={isMobile}
-                />
-              ))}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
+              <ChatMessage
+                key={index}
+                message={chat.request}
+                initialAssistantMessage={chat.initialAssistantMessage}
+                finalResponse={renderAssistantResponse(
+                  displayedResponse[chat.request] || chat.finalResponse
+                )}
+                isLoading={chat.isLoading}
+                isMobile={isMobile}
+              />
+            ))}
           </div>
           <ChatInput
             message={message}
@@ -649,6 +682,7 @@ function Dashboard() {
             handleFileUpload={handleFileUpload}
             setIsModalVisible={setIsLoginModalVisible}
             isMobile={isMobile}
+            isWebSocketConnected={isConnected}
           />
         </div>
       </div>
