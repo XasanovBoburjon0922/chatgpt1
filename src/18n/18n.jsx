@@ -9,6 +9,7 @@ i18n.use(initReactI18next).init({
       translation: {
         chatgpt: "Imzo AI",
         login: "Kirish",
+        newChat:"Yangi chat",
         signup: "Bepul ro'yxatdan o'tish",
         pdf: "Ariza yaratish",
         writeApplication: "Ariza yozish",
@@ -53,6 +54,7 @@ i18n.use(initReactI18next).init({
       translation: {
         chatgpt: "Imzo AI",
         login: "Вход",
+        newChat:"Новый чат",
         signup: "Бесплатная регистрация",
         pdf: "Создать заявление",
         writeApplication: "Написать заявление",

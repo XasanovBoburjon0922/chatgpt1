@@ -61,13 +61,15 @@ function Dashboard() {
   // WebSocket connection management with reconnect
   const connectWebSocket = (roomId) => {
     if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
-      return;
+      console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
+      return null;
     }
 
     // Close any existing WebSocket connection
     if (ws) {
       ws.close();
       setWs(null);
+      setIsConnected(false);
     }
 
     const wsUrl = `${WS_BASE_URL}/${roomId}`;
@@ -129,6 +131,8 @@ function Dashboard() {
       console.error("WebSocket error:", error);
       websocket.close(); // Force close to trigger onclose and reconnect
     };
+
+    return websocket;
   };
 
   useEffect(() => {
@@ -285,7 +289,6 @@ function Dashboard() {
       if (chatId) {
         fetchChatHistory(chatId);
       } else {
-        // Clear chat history when at root URL (/)
         setChatHistory([]);
         setDisplayedResponse({});
         setNewResponse(null);
@@ -459,6 +462,10 @@ function Dashboard() {
 
   const waitForWebSocketConnection = (websocket, timeout) => {
     return new Promise((resolve, reject) => {
+      if (!websocket) {
+        reject(new Error(t("websocketNotInitialized")));
+        return;
+      }
       const startTime = Date.now();
       const checkConnection = () => {
         if (websocket.readyState === WebSocket.OPEN) {
@@ -491,33 +498,50 @@ function Dashboard() {
       return;
     }
 
-    let currentChatRoomId = chatId;
-    if (!currentChatRoomId) {
-      // Check if conversations exist; if so, use the first one
-      if (conversations.length > 0) {
-        currentChatRoomId = conversations[0].id;
-        navigate(`/c/${currentChatRoomId}`);
-        await fetchChatHistory(currentChatRoomId);
-      } else {
-        // Create a new chat room if no conversations exist
-        currentChatRoomId = await createChatRoom();
-        if (!currentChatRoomId) {
-          return;
-        }
-        navigate(`/c/${currentChatRoomId}`);
-      }
-      // Initiate WebSocket connection
-      connectWebSocket(currentChatRoomId);
+    if (loading) {
+      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
+      return;
     }
 
-    // Wait for WebSocket to be fully connected
-    try {
-      await waitForWebSocketConnection(ws, connectionTimeout);
-    } catch (error) {
-      console.error("WebSocket connection failed:", error);
-      toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
-      setLoading(false);
-      return;
+    setLoading(true);
+
+    let currentChatRoomId = chatId;
+    if (!currentChatRoomId) {
+      // Try to create a new chat room
+      currentChatRoomId = await createChatRoom();
+      if (!currentChatRoomId) {
+        // Fallback: fetch chat rooms and use the first one
+        await fetchChatRooms();
+        if (conversations.length > 0) {
+          currentChatRoomId = conversations[0].id;
+          console.log("Using first existing conversation ID:", currentChatRoomId);
+        } else {
+          toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
+          setLoading(false);
+          return;
+        }
+      }
+      navigate(`/c/${currentChatRoomId}`);
+      await fetchChatHistory(currentChatRoomId);
+    }
+
+    // Ensure WebSocket is initialized and connected
+    let websocket = ws;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      websocket = connectWebSocket(currentChatRoomId);
+      if (!websocket) {
+        toast.error(t("websocketNotInitialized"), { theme: "dark", position: "top-center" });
+        setLoading(false);
+        return;
+      }
+      try {
+        await waitForWebSocketConnection(websocket, connectionTimeout);
+      } catch (error) {
+        console.error("WebSocket connection failed:", error);
+        toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
+        setLoading(false);
+        return;
+      }
     }
 
     const newMessage = {
@@ -528,11 +552,10 @@ function Dashboard() {
     };
     setChatHistory((prev) => [...prev, newMessage]);
     setMessage("");
-    setLoading(true);
 
     try {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ message: message, type: "request" }));
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({ message: message, type: "request" }));
       } else {
         throw new Error(t("websocketNotConnected"));
       }
