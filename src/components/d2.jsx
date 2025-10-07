@@ -14,6 +14,7 @@ import SidebarIcons from "./sidebar/sidebarIcons";
 import SidebarContent from "./sidebar/sidebarContext";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
+const WS_BASE_URL = "ws://31.187.74.228:8080/ws";
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
@@ -33,6 +34,12 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("history");
   const [pendingMessage, setPendingMessage] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [ws, setWs] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 3000; // 3 seconds
+  const connectionTimeout = 10000; // 10 seconds timeout for WebSocket connection
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -50,6 +57,96 @@ function Dashboard() {
     setIsHistoryOpen(!isHistoryOpen);
     setIsSidebarOpen(!isHistoryOpen);
   };
+
+  // WebSocket connection management with reconnect
+  const connectWebSocket = (roomId) => {
+    if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
+      console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
+      return null;
+    }
+
+    // Close any existing WebSocket connection
+    if (ws) {
+      ws.close();
+      setWs(null);
+      setIsConnected(false);
+    }
+
+    const wsUrl = `${WS_BASE_URL}/${roomId}`;
+    const websocket = new WebSocket(wsUrl);
+    setWs(websocket);
+
+    websocket.onopen = () => {
+      console.log("WebSocket connected to", wsUrl);
+      setIsConnected(true);
+      setReconnectAttempts(0); // Reset reconnect attempts on successful connection
+    };
+
+    websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Received message:", data);
+        if (data.type === "response" && data.response && typeof data.response === "string") {
+          const responseText = data.response.trim();
+          if (responseText) {
+            setNewResponse({
+              request: chatHistory[chatHistory.length - 1]?.request || message,
+              response: responseText,
+            });
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === prev.length - 1
+                  ? { ...item, finalResponse: responseText, isLoading: false }
+                  : item
+              )
+            );
+          } else {
+            console.warn("Empty response received");
+          }
+        } else {
+          console.warn("Invalid message format:", data);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+        toast.error(t("websocketMessageError"), { theme: "dark", position: "top-center" });
+      }
+    };
+
+    websocket.onclose = () => {
+      console.log("WebSocket disconnected");
+      setIsConnected(false);
+      if (reconnectAttempts < maxReconnectAttempts) {
+        setTimeout(() => {
+          setReconnectAttempts((prev) => prev + 1);
+          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
+          connectWebSocket(roomId);
+        }, reconnectDelay);
+      } else {
+        toast.error(t("websocketMaxReconnect"), { theme: "dark", position: "top-center" });
+        setLoading(false);
+      }
+    };
+
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      websocket.close(); // Force close to trigger onclose and reconnect
+    };
+
+    return websocket;
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user?.full_name && chatId) {
+      connectWebSocket(chatId);
+      return () => {
+        if (ws) {
+          ws.close();
+          setWs(null);
+          setIsConnected(false);
+        }
+      };
+    }
+  }, [isAuthenticated, user, chatId]);
 
   const handleFileUpload = async (file, question) => {
     if (!file || !question) {
@@ -92,7 +189,7 @@ function Dashboard() {
           finalResponse: null,
           isLoading: true,
         };
-        setChatHistory([...chatHistory, newMessage]);
+        setChatHistory((prev) => [...prev, newMessage]);
 
         const analysisData = await pollForAnalysisResponse(id);
         setChatHistory((prev) =>
@@ -121,8 +218,8 @@ function Dashboard() {
   };
 
   const pollForAnalysisResponse = async (analysisId) => {
-    const maxAttempts = 30; // Reduced for faster timeout (2 minutes at 4s interval)
-    const delay = 4000; // Reduced to 4 seconds for faster polling
+    const maxAttempts = 30;
+    const delay = 4000;
     const token = localStorage.getItem("access_token");
     if (!token) {
       console.error("Access token not found");
@@ -139,18 +236,15 @@ function Dashboard() {
           },
         });
 
-        console.log(`Polling attempt ${i + 1}:`, response.data); // Debug log
+        console.log(`Polling attempt ${i + 1}:`, response.data);
 
         if (response.status === 200) {
-          // Check if response exists and is not null/empty
           if (response.data.responce && response.data.responce.trim() !== "") {
             return response.data;
           }
-          // Check for a status field indicating completion (adjust based on actual API response)
           if (response.data.status === "completed") {
             return response.data;
           }
-          // If response is null/empty but status is pending, continue polling
           if (response.data.status === "pending" || !response.data.responce) {
             console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
           }
@@ -161,13 +255,11 @@ function Dashboard() {
           navigate("/login");
           throw error;
         }
-        // Log other errors but continue polling unless critical
         console.error(`Polling attempt ${i + 1} failed:`, error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    // Timeout after max attempts
     const errorMessage = t("analysisTimeout");
     toast.error(errorMessage, { theme: "dark", position: "top-center" });
     throw new Error(errorMessage);
@@ -196,6 +288,10 @@ function Dashboard() {
       fetchChatRooms();
       if (chatId) {
         fetchChatHistory(chatId);
+      } else {
+        setChatHistory([]);
+        setDisplayedResponse({});
+        setNewResponse(null);
       }
     }
   }, [isAuthenticated, user, chatId]);
@@ -219,8 +315,15 @@ function Dashboard() {
           currentText += fullText.slice(index, index + step);
           setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
           index += step;
-          setTimeout(type, 30);
+          setTimeout(type, 50);
         } else {
+          setChatHistory((prev) =>
+            prev.map((item) =>
+              item.request === request
+                ? { ...item, finalResponse: fullText, isLoading: false }
+                : item
+            )
+          );
           setNewResponse(null);
         }
       };
@@ -254,7 +357,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        console.log("errorcha");
+        toast.error(t("failedtofetchchatrooms"), { theme: "dark", position: "top-center" });
       }
     } finally {
       setLoading(false);
@@ -262,7 +365,7 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name) {
+    if (!isAuthenticated || !user?.full_name || !roomId) {
       return;
     }
 
@@ -283,14 +386,14 @@ function Dashboard() {
       });
 
       const history = response.data.chats || [];
-      setChatHistory(
-        history.map((chat) => ({
-          request: chat.request,
-          initialAssistantMessage: chat.response,
-          finalResponse: null,
-          isLoading: false,
-        }))
-      );
+      const newChatHistory = history.map((chat) => ({
+        request: chat.request,
+        initialAssistantMessage: null,
+        finalResponse: chat.response || null,
+        isLoading: false,
+      }));
+
+      setChatHistory(newChatHistory);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
           if (chat.response) {
@@ -305,7 +408,7 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
-        console.log("errorcha");
+        toast.error(t("failedtofetchhistory"), { theme: "dark", position: "top-center" });
       }
     } finally {
       setLoading(false);
@@ -338,11 +441,11 @@ function Dashboard() {
       );
 
       const newRoomId = response.data.ID;
+      console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
-      navigate(`/c/${newRoomId}`);
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -357,18 +460,86 @@ function Dashboard() {
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim() || !isAuthenticated || !user?.full_name) {
-      if (!user?.full_name) {
-        setIsNameModalVisible(true);
+  const waitForWebSocketConnection = (websocket, timeout) => {
+    return new Promise((resolve, reject) => {
+      if (!websocket) {
+        reject(new Error(t("websocketNotInitialized")));
+        return;
       }
+      const startTime = Date.now();
+      const checkConnection = () => {
+        if (websocket.readyState === WebSocket.OPEN) {
+          resolve();
+        } else if (Date.now() - startTime >= timeout) {
+          reject(new Error(t("websocketConnectionTimeout")));
+        } else {
+          setTimeout(checkConnection, 100);
+        }
+      };
+      checkConnection();
+    });
+  };
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
 
+    if (!isAuthenticated) {
+      setIsLoginModalVisible(true);
+      setPendingMessage(message);
+      return;
+    }
+
+    if (!user?.full_name) {
+      setIsNameModalVisible(true);
+      setPendingMessage(message);
+      return;
+    }
+
+    if (loading) {
+      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
+      return;
+    }
+
+    setLoading(true);
+
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
+      // Try to create a new chat room
       currentChatRoomId = await createChatRoom();
       if (!currentChatRoomId) {
+        // Fallback: fetch chat rooms and use the first one
+        await fetchChatRooms();
+        if (conversations.length > 0) {
+          currentChatRoomId = conversations[0].id;
+          console.log("Using first existing conversation ID:", currentChatRoomId);
+        } else {
+          toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
+          setLoading(false);
+          return;
+        }
+      }
+      navigate(`/c/${currentChatRoomId}`);
+      await fetchChatHistory(currentChatRoomId);
+    }
+
+    // Ensure WebSocket is initialized and connected
+    let websocket = ws;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      websocket = connectWebSocket(currentChatRoomId);
+      if (!websocket) {
+        toast.error(t("websocketNotInitialized"), { theme: "dark", position: "top-center" });
+        setLoading(false);
+        return;
+      }
+      try {
+        await waitForWebSocketConnection(websocket, connectionTimeout);
+      } catch (error) {
+        console.error("WebSocket connection failed:", error);
+        toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
+        setLoading(false);
         return;
       }
     }
@@ -379,116 +550,27 @@ function Dashboard() {
       finalResponse: null,
       isLoading: true,
     };
-    setChatHistory([...chatHistory, newMessage]);
+    setChatHistory((prev) => [...prev, newMessage]);
     setMessage("");
-    setLoading(true);
 
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        console.error("Access token not found");
-        navigate("/login");
-        return;
-      }
-
-      const response = await axios.post(
-        `${API_BASE_URL}/ask`,
-        {
-          chat_room_id: currentChatRoomId,
-          request: message,
-        },
-        {
-          headers: {
-            Authorization: `${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        const { id, message: apiMessage } = response.data;
-
-        setChatHistory((prev) =>
-          prev.map((item, index) =>
-            index === prev.length - 1
-              ? { ...item, initialAssistantMessage: apiMessage || "", isLoading: true }
-              : item
-          )
-        );
-
-        const responseData = await pollForResponse(id);
-        const finalResponse = responseData.response;
-
-        setChatHistory((prev) =>
-          prev.map((item, index) =>
-            index === prev.length - 1
-              ? { ...item, finalResponse: finalResponse, isLoading: false }
-              : item
-          )
-        );
-        setNewResponse({ request: message, response: finalResponse });
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({ message: message, type: "request" }));
+      } else {
+        throw new Error(t("websocketNotConnected"));
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      let errorMessage = t("failedtosendmessage");
-      if (error.response?.status === 400) {
-        errorMessage = error.response.data?.message || t("failedtosendmessage");
-      } else if (
-        error.response?.status === 500 &&
-        error.response.data?.error === "kunlik request limiti tugadi"
-      ) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.status === 401) {
-        navigate("/login");
-      } else {
-        console.log("serverError");
-      }
-
+      toast.error(error.message || t("failedtosendmessage"), { theme: "dark", position: "top-center" });
       setChatHistory((prev) =>
         prev.map((item, index) =>
           index === prev.length - 1
-            ? { ...item, finalResponse: errorMessage, isLoading: false }
+            ? { ...item, finalResponse: error.message || t("failedtosendmessage"), isLoading: false }
             : item
         )
       );
-      setNewResponse({ request: message, response: errorMessage });
-    } finally {
       setLoading(false);
     }
-  };
-
-  const pollForResponse = async (requestId) => {
-    const maxAttempts = 1000;
-    const delay = 14000;
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.error("Access token not found");
-      navigate("/login");
-      throw new Error("Access token not found");
-    }
-
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/get/gpt/responce?id=${requestId}`, {
-          headers: {
-            Authorization: `${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 200 && response.data.response) {
-          return response.data;
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-        if (error.response?.status === 401) {
-          navigate("/login");
-          throw error;
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    throw new Error("Response not received in time");
   };
 
   const handleNameModalOk = async () => {
@@ -618,25 +700,24 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("pleaseLogin")}</p>
               </div>
             )}
-            {isAuthenticated && chatHistory.length === 0 && !chatId && (
+            {isAuthenticated && !chatId && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated &&
-              chatHistory.map((chat, index) => (
-                <ChatMessage
-                  key={index}
-                  message={chat.request}
-                  initialAssistantMessage={chat.initialAssistantMessage}
-                  finalResponse={renderAssistantResponse(
-                    displayedResponse[chat.request] || chat.finalResponse
-                  )}
-                  isLoading={chat.isLoading}
-                  isMobile={isMobile}
-                />
-              ))}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
+              <ChatMessage
+                key={index}
+                message={chat.request}
+                initialAssistantMessage={chat.initialAssistantMessage}
+                finalResponse={renderAssistantResponse(
+                  displayedResponse[chat.request] || chat.finalResponse
+                )}
+                isLoading={chat.isLoading}
+                isMobile={isMobile}
+              />
+            ))}
           </div>
           <ChatInput
             message={message}
@@ -648,6 +729,7 @@ function Dashboard() {
             handleFileUpload={handleFileUpload}
             setIsModalVisible={setIsLoginModalVisible}
             isMobile={isMobile}
+            isWebSocketConnected={isConnected}
           />
         </div>
       </div>

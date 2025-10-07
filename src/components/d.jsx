@@ -25,6 +25,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
+  const [streamingResponse, setStreamingResponse] = useState(""); // New state for streaming chunks
   const [userId] = useState(localStorage.getItem("user_id"));
   const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -38,11 +39,11 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
-  const reconnectDelay = 3000; // 3 sekund
+  const reconnectDelay = 3000;
+  const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
-  const location = useLocation();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -58,25 +59,33 @@ function Dashboard() {
   };
 
   // WebSocket connection management with reconnect
-  const connectWebSocket = () => {
-    if (!isAuthenticated || !user?.full_name || !chatId || reconnectAttempts >= maxReconnectAttempts) {
-      return;
+  const connectWebSocket = (roomId) => {
+    if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
+      console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
+      return null;
     }
 
-    const wsUrl = `${WS_BASE_URL}/${chatId}`;
+    if (ws) {
+      ws.close();
+      setWs(null);
+      setIsConnected(false);
+    }
+
+    const wsUrl = `${WS_BASE_URL}/${roomId}`;
     const websocket = new WebSocket(wsUrl);
     setWs(websocket);
 
     websocket.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connected to", wsUrl);
       setIsConnected(true);
-      setReconnectAttempts(0); // Reset reconnect attempts on successful connection
+      setReconnectAttempts(0);
     };
 
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
+
         if (data.type === "response" && data.response && typeof data.response === "string") {
           const responseText = data.response.trim();
           if (responseText) {
@@ -91,8 +100,27 @@ function Dashboard() {
                   : item
               )
             );
+            setStreamingResponse(""); // Reset streaming response
           } else {
             console.warn("Empty response received");
+          }
+        } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
+          const chunkText = data.data.trim();
+          if (chunkText) {
+            setStreamingResponse((prev) => prev + chunkText);
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === prev.length - 1
+                  ? { ...item, finalResponse: (item.finalResponse || "") + chunkText, isLoading: true }
+                  : item
+              )
+            );
+            setDisplayedResponse((prev) => ({
+              ...prev,
+              [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
+            }));
+          } else {
+            console.warn("Empty chunk received");
           }
         } else {
           console.warn("Invalid message format:", data);
@@ -110,25 +138,30 @@ function Dashboard() {
         setTimeout(() => {
           setReconnectAttempts((prev) => prev + 1);
           console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
-          connectWebSocket();
+          connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
         toast.error(t("websocketMaxReconnect"), { theme: "dark", position: "top-center" });
+        setLoading(false);
       }
     };
 
     websocket.onerror = (error) => {
       console.error("WebSocket error:", error);
-      websocket.close(); // Force close to trigger onclose and reconnect
+      websocket.close();
     };
+
+    return websocket;
   };
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name && chatId) {
-      connectWebSocket();
+      connectWebSocket(chatId);
       return () => {
         if (ws) {
           ws.close();
+          setWs(null);
+          setIsConnected(false);
         }
       };
     }
@@ -277,6 +310,8 @@ function Dashboard() {
       } else {
         setChatHistory([]);
         setDisplayedResponse({});
+        setNewResponse(null);
+        setStreamingResponse("");
       }
     }
   }, [isAuthenticated, user, chatId]);
@@ -285,7 +320,7 @@ function Dashboard() {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatHistory, displayedResponse]);
+  }, [chatHistory, displayedResponse, streamingResponse]);
 
   useEffect(() => {
     if (newResponse?.request && newResponse?.response) {
@@ -388,6 +423,7 @@ function Dashboard() {
         }, {})
       );
       setNewResponse(null);
+      setStreamingResponse("");
     } catch (error) {
       console.error("Error fetching chat history:", error);
       if (error.response?.status === 401) {
@@ -426,11 +462,12 @@ function Dashboard() {
       );
 
       const newRoomId = response.data.ID;
+      console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
-      navigate(`/c/${newRoomId}`);
+      setStreamingResponse("");
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -445,18 +482,83 @@ function Dashboard() {
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim() || !isAuthenticated || !user?.full_name) {
-      if (!user?.full_name) {
-        setIsNameModalVisible(true);
+  const waitForWebSocketConnection = (websocket, timeout) => {
+    return new Promise((resolve, reject) => {
+      if (!websocket) {
+        reject(new Error(t("websocketNotInitialized")));
+        return;
       }
+      const startTime = Date.now();
+      const checkConnection = () => {
+        if (websocket.readyState === WebSocket.OPEN) {
+          resolve();
+        } else if (Date.now() - startTime >= timeout) {
+          reject(new Error(t("websocketConnectionTimeout")));
+        } else {
+          setTimeout(checkConnection, 100);
+        }
+      };
+      checkConnection();
+    });
+  };
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
+
+    if (!isAuthenticated) {
+      setIsLoginModalVisible(true);
+      setPendingMessage(message);
+      return;
+    }
+
+    if (!user?.full_name) {
+      setIsNameModalVisible(true);
+      setPendingMessage(message);
+      return;
+    }
+
+    if (loading) {
+      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
+      return;
+    }
+
+    setLoading(true);
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
       currentChatRoomId = await createChatRoom();
       if (!currentChatRoomId) {
+        await fetchChatRooms();
+        if (conversations.length > 0) {
+          currentChatRoomId = conversations[0].id;
+          console.log("Using first existing conversation ID:", currentChatRoomId);
+        } else {
+          toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
+          setLoading(false);
+          return;
+        }
+      }
+      navigate(`/c/${currentChatRoomId}`);
+      await fetchChatHistory(currentChatRoomId);
+    }
+
+    let websocket = ws;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      websocket = connectWebSocket(currentChatRoomId);
+      if (!websocket) {
+        toast.error(t("websocketNotInitialized"), { theme: "dark", position: "top-center" });
+        setLoading(false);
+        return;
+      }
+      try {
+        await waitForWebSocketConnection(websocket, connectionTimeout);
+      } catch (error) {
+        console.error("WebSocket connection failed:", error);
+        toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
+        setLoading(false);
         return;
       }
     }
@@ -468,12 +570,12 @@ function Dashboard() {
       isLoading: true,
     };
     setChatHistory((prev) => [...prev, newMessage]);
+    setStreamingResponse("");
     setMessage("");
-    setLoading(true);
 
     try {
-      if (ws && isConnected) {
-        ws.send(JSON.stringify({ message: message, type: "request" }));
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({ message: message, type: "request" }));
       } else {
         throw new Error(t("websocketNotConnected"));
       }
@@ -618,25 +720,24 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("pleaseLogin")}</p>
               </div>
             )}
-            {isAuthenticated && chatHistory.length === 0 && !chatId && (
+            {isAuthenticated && !chatId && (
               <div className="flex flex-col justify-center items-center h-full text-center">
                 <h2 className="text-2xl font-bold mb-3 lg:text-3xl lg:mb-4">Welcome Back!</h2>
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated &&
-              chatHistory.map((chat, index) => (
-                <ChatMessage
-                  key={index}
-                  message={chat.request}
-                  initialAssistantMessage={chat.initialAssistantMessage}
-                  finalResponse={renderAssistantResponse(
-                    displayedResponse[chat.request] || chat.finalResponse
-                  )}
-                  isLoading={chat.isLoading}
-                  isMobile={isMobile}
-                />
-              ))}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
+              <ChatMessage
+                key={index}
+                message={chat.request}
+                initialAssistantMessage={chat.initialAssistantMessage}
+                finalResponse={renderAssistantResponse(
+                  displayedResponse[chat.request] || chat.finalResponse
+                )}
+                isLoading={chat.isLoading}
+                isMobile={isMobile}
+              />
+            ))}
           </div>
           <ChatInput
             message={message}
@@ -648,6 +749,7 @@ function Dashboard() {
             handleFileUpload={handleFileUpload}
             setIsModalVisible={setIsLoginModalVisible}
             isMobile={isMobile}
+            isWebSocketConnected={isConnected}
           />
         </div>
       </div>

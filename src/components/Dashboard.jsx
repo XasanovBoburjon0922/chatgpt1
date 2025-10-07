@@ -14,7 +14,7 @@ import SidebarIcons from "./sidebar/sidebarIcons";
 import SidebarContent from "./sidebar/sidebarContext";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
-const WS_BASE_URL = "ws://31.187.74.228:8080/ws";
+const WS_BASE_URL = "wss://imzo-ai.uzjoylar.uz/ws";
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
