@@ -38,8 +38,8 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
-  const reconnectDelay = 3000; // 3 seconds
-  const connectionTimeout = 10000; // 10 seconds timeout for WebSocket connection
+  const reconnectDelay = 5000; // Increased to 5 seconds
+  const connectionTimeout = 10000; // 10 seconds timeout
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -61,32 +61,49 @@ function Dashboard() {
   // WebSocket connection management with reconnect
   const connectWebSocket = (roomId) => {
     if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
-      console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
+      console.error("Cannot connect WebSocket:", {
+        isAuthenticated,
+        fullName: user?.full_name,
+        roomId,
+        reconnectAttempts,
+      });
+      toast.error(t("websocketConnectionFailed"), { theme: "dark", position: "top-center" });
       return null;
     }
 
     // Close any existing WebSocket connection
     if (ws) {
+      console.log("Closing existing WebSocket connection");
       ws.close();
       setWs(null);
       setIsConnected(false);
     }
 
     const wsUrl = `${WS_BASE_URL}/${roomId}`;
+    console.log("Connecting to WebSocket:", wsUrl);
     const websocket = new WebSocket(wsUrl);
     setWs(websocket);
+
+    const connectionTimeoutId = setTimeout(() => {
+      if (websocket.readyState !== WebSocket.OPEN) {
+        console.error("WebSocket connection timed out for roomId:", roomId);
+        websocket.close();
+        toast.error(t("websocketConnectionTimeout"), { theme: "dark", position: "top-center" });
+      }
+    }, connectionTimeout);
 
     websocket.onopen = () => {
       console.log("WebSocket connected to", wsUrl);
       setIsConnected(true);
-      setReconnectAttempts(0); // Reset reconnect attempts on successful connection
+      setReconnectAttempts(0);
+      clearTimeout(connectionTimeoutId);
     };
 
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("Received message:", data);
-        if (data.type === "response" && data.response && typeof data.response === "string") {
+        console.log("Received WebSocket message:", data);
+        if (data.type === "gemini" || data.type === "gpt" && data.response && typeof data.response === "string") {
           const responseText = data.response.trim();
           if (responseText) {
             setNewResponse({
@@ -113,12 +130,15 @@ function Dashboard() {
     };
 
     websocket.onclose = () => {
-      console.log("WebSocket disconnected");
+      console.log("WebSocket disconnected for roomId:", roomId);
       setIsConnected(false);
+      clearTimeout(connectionTimeoutId);
       if (reconnectAttempts < maxReconnectAttempts) {
         setTimeout(() => {
-          setReconnectAttempts((prev) => prev + 1);
-          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
+          setReconnectAttempts((prev) => {
+            console.log(`Reconnecting WebSocket, attempt ${prev + 1}`);
+            return prev + 1;
+          });
           connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
@@ -128,8 +148,9 @@ function Dashboard() {
     };
 
     websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      websocket.close(); // Force close to trigger onclose and reconnect
+      console.error("WebSocket error for roomId:", roomId, error);
+      toast.error(t("websocketConnectionError"), { theme: "dark", position: "top-center" });
+      websocket.close();
     };
 
     return websocket;
@@ -137,10 +158,12 @@ function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name && chatId) {
-      connectWebSocket(chatId);
+      console.log("Initializing WebSocket for chatId:", chatId);
+      const websocket = connectWebSocket(chatId);
       return () => {
-        if (ws) {
-          ws.close();
+        if (websocket) {
+          console.log("Cleaning up WebSocket for chatId:", chatId);
+          websocket.close();
           setWs(null);
           setIsConnected(false);
         }
@@ -507,10 +530,8 @@ function Dashboard() {
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
-      // Try to create a new chat room
       currentChatRoomId = await createChatRoom();
       if (!currentChatRoomId) {
-        // Fallback: fetch chat rooms and use the first one
         await fetchChatRooms();
         if (conversations.length > 0) {
           currentChatRoomId = conversations[0].id;
@@ -525,7 +546,6 @@ function Dashboard() {
       await fetchChatHistory(currentChatRoomId);
     }
 
-    // Ensure WebSocket is initialized and connected
     let websocket = ws;
     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
       websocket = connectWebSocket(currentChatRoomId);
@@ -555,7 +575,8 @@ function Dashboard() {
 
     try {
       if (websocket && websocket.readyState === WebSocket.OPEN) {
-        websocket.send(JSON.stringify({ message: message, type: "request" }));
+        console.log("Sending WebSocket message:", { message, type: "request" });
+        websocket.send(JSON.stringify({ message, type: "request" }));
       } else {
         throw new Error(t("websocketNotConnected"));
       }
