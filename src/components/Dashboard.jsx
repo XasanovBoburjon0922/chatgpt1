@@ -25,6 +25,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
+  const [streamingResponse, setStreamingResponse] = useState(""); // New state for streaming chunks
   const [userId] = useState(localStorage.getItem("user_id"));
   const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -38,12 +39,11 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 5;
-  const reconnectDelay = 5000; // Increased to 5 seconds
-  const connectionTimeout = 10000; // 10 seconds timeout
+  const reconnectDelay = 3000;
+  const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
-  const location = useLocation();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -61,48 +61,31 @@ function Dashboard() {
   // WebSocket connection management with reconnect
   const connectWebSocket = (roomId) => {
     if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
-      console.error("Cannot connect WebSocket:", {
-        isAuthenticated,
-        fullName: user?.full_name,
-        roomId,
-        reconnectAttempts,
-      });
-      toast.error(t("websocketConnectionFailed"), { theme: "dark", position: "top-center" });
+      console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
       return null;
     }
 
-    // Close any existing WebSocket connection
     if (ws) {
-      console.log("Closing existing WebSocket connection");
       ws.close();
       setWs(null);
       setIsConnected(false);
     }
 
     const wsUrl = `${WS_BASE_URL}/${roomId}`;
-    console.log("Connecting to WebSocket:", wsUrl);
     const websocket = new WebSocket(wsUrl);
     setWs(websocket);
-
-    const connectionTimeoutId = setTimeout(() => {
-      if (websocket.readyState !== WebSocket.OPEN) {
-        console.error("WebSocket connection timed out for roomId:", roomId);
-        websocket.close();
-        toast.error(t("websocketConnectionTimeout"), { theme: "dark", position: "top-center" });
-      }
-    }, connectionTimeout);
 
     websocket.onopen = () => {
       console.log("WebSocket connected to", wsUrl);
       setIsConnected(true);
       setReconnectAttempts(0);
-      clearTimeout(connectionTimeoutId);
     };
 
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("Received WebSocket message:", data);
+        console.log("Received message:", data);
+
         if (data.type === "gemini" || data.type === "gpt" && data.response && typeof data.response === "string") {
           const responseText = data.response.trim();
           if (responseText) {
@@ -117,8 +100,27 @@ function Dashboard() {
                   : item
               )
             );
+            setStreamingResponse(""); // Reset streaming response
           } else {
             console.warn("Empty response received");
+          }
+        } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
+          const chunkText = data.data.trim();
+          if (chunkText) {
+            setStreamingResponse((prev) => prev + chunkText);
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === prev.length - 1
+                  ? { ...item, finalResponse: (item.finalResponse || "") + chunkText, isLoading: true }
+                  : item
+              )
+            );
+            setDisplayedResponse((prev) => ({
+              ...prev,
+              [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
+            }));
+          } else {
+            console.warn("Empty chunk received");
           }
         } else {
           console.warn("Invalid message format:", data);
@@ -130,15 +132,12 @@ function Dashboard() {
     };
 
     websocket.onclose = () => {
-      console.log("WebSocket disconnected for roomId:", roomId);
+      console.log("WebSocket disconnected");
       setIsConnected(false);
-      clearTimeout(connectionTimeoutId);
       if (reconnectAttempts < maxReconnectAttempts) {
         setTimeout(() => {
-          setReconnectAttempts((prev) => {
-            console.log(`Reconnecting WebSocket, attempt ${prev + 1}`);
-            return prev + 1;
-          });
+          setReconnectAttempts((prev) => prev + 1);
+          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
           connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
@@ -148,8 +147,7 @@ function Dashboard() {
     };
 
     websocket.onerror = (error) => {
-      console.error("WebSocket error for roomId:", roomId, error);
-      toast.error(t("websocketConnectionError"), { theme: "dark", position: "top-center" });
+      console.error("WebSocket error:", error);
       websocket.close();
     };
 
@@ -158,12 +156,10 @@ function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && user?.full_name && chatId) {
-      console.log("Initializing WebSocket for chatId:", chatId);
-      const websocket = connectWebSocket(chatId);
+      connectWebSocket(chatId);
       return () => {
-        if (websocket) {
-          console.log("Cleaning up WebSocket for chatId:", chatId);
-          websocket.close();
+        if (ws) {
+          ws.close();
           setWs(null);
           setIsConnected(false);
         }
@@ -315,6 +311,7 @@ function Dashboard() {
         setChatHistory([]);
         setDisplayedResponse({});
         setNewResponse(null);
+        setStreamingResponse("");
       }
     }
   }, [isAuthenticated, user, chatId]);
@@ -323,7 +320,7 @@ function Dashboard() {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatHistory, displayedResponse]);
+  }, [chatHistory, displayedResponse, streamingResponse]);
 
   useEffect(() => {
     if (newResponse?.request && newResponse?.response) {
@@ -426,6 +423,7 @@ function Dashboard() {
         }, {})
       );
       setNewResponse(null);
+      setStreamingResponse("");
     } catch (error) {
       console.error("Error fetching chat history:", error);
       if (error.response?.status === 401) {
@@ -469,6 +467,7 @@ function Dashboard() {
       setChatHistory([]);
       setDisplayedResponse({});
       setNewResponse(null);
+      setStreamingResponse("");
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -571,12 +570,12 @@ function Dashboard() {
       isLoading: true,
     };
     setChatHistory((prev) => [...prev, newMessage]);
+    setStreamingResponse("");
     setMessage("");
 
     try {
       if (websocket && websocket.readyState === WebSocket.OPEN) {
-        console.log("Sending WebSocket message:", { message, type: "request" });
-        websocket.send(JSON.stringify({ message, type: "request" }));
+        websocket.send(JSON.stringify({ message: message, type: "request" }));
       } else {
         throw new Error(t("websocketNotConnected"));
       }
