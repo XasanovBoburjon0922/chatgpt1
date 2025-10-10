@@ -14,21 +14,14 @@ const SidebarContent = memo(
     isAuthenticated,
     user,
     navigate,
+    handleNewChat,
   }) => {
     const { t } = useTranslation();
 
-    const handleNewChat = async () => {
-      if (loading || !isAuthenticated || !user?.full_name) {
-        toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
-        return;
-      }
-
-      const newRoomId = await createChatRoom();
-      if (newRoomId) {
-        navigate(`/c/${newRoomId}`);
-        fetchChatHistory(newRoomId);
-        if (window.innerWidth < 1024) setIsSidebarOpen(false);
-      }
+    const handleConversationSelect = (convId) => {
+      navigate(`/c/${convId}`);
+      fetchChatHistory(convId);
+      if (window.innerWidth < 1024) setIsSidebarOpen(false);
     };
 
     const HistoryPanel = () => (
@@ -56,11 +49,7 @@ const SidebarContent = memo(
                   className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${
                     chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
                   }`}
-                  onClick={() => {
-                    navigate(`/c/${conv.id}`);
-                    fetchChatHistory(conv.id);
-                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                  }}
+                  onClick={() => handleConversationSelect(conv.id)}
                 >
                   <svg
                     className="w-4 h-4 text-gray-500"
@@ -89,11 +78,7 @@ const SidebarContent = memo(
                   className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${
                     chatRoomId === conv.id ? "bg-gray-900/65" : "hover:bg-gray-900/85"
                   }`}
-                  onClick={() => {
-                    navigate(`/c/${conv.id}`);
-                    fetchChatHistory(conv.id);
-                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                  }}
+                  onClick={() => handleConversationSelect(conv.id)}
                 >
                   <svg
                     className="w-4 h-4 text-gray-500"
@@ -122,11 +107,7 @@ const SidebarContent = memo(
                   className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 flex items-center space-x-2 group lg:p-3 lg:space-x-3 ${
                     chatRoomId === conv.id ? "bg-gray-800" : "hover:bg-gray-800/50"
                   }`}
-                  onClick={() => {
-                    navigate(`/c/${conv.id}`);
-                    fetchChatHistory(conv.id);
-                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                  }}
+                  onClick={() => handleConversationSelect(conv.id)}
                 >
                   <svg
                     className="w-4 h-4 text-gray-500"

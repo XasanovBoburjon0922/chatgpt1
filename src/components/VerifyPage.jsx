@@ -190,7 +190,7 @@ function VerifyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-black/85 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="dark" />
 
@@ -206,9 +206,9 @@ function VerifyPage() {
         </button>
 
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-20 h-20 mx-auto mb-6 bg-black/85 rounded-2xl flex items-center justify-center shadow-lg">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
+              <span className="text-2xl font-bold bg-black/85 from-blue-500 to-purple-600 bg-clip-text text-transparent">I</span>
             </div>
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Telefon raqamini tasdiqlang</h1>
@@ -218,7 +218,7 @@ function VerifyPage() {
           </p>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
+        <div className="bg-black/25 rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
           <div className="flex justify-center gap-3 mb-8">
             {code.map((digit, index) => (
               <input

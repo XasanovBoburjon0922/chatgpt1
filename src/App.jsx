@@ -17,6 +17,7 @@ function App() {
         <Route path="/verify" element={<VerifyPage />} />
         <Route path="/" element={<DashboardPage />} />
         <Route path="/c/:chatId" element={<DashboardPage />} />
+        <Route path="/categories" element={<DashboardPage />} />
         <Route path="/about" element={<About />} />
         <Route path="/document" element={<ApplicationFormPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

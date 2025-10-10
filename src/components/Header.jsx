@@ -168,7 +168,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-100">
+              <div className="absolute right-0 mt-2 w-80 bg-black/85 rounded-lg shadow-xl border border-gray-700 z-50 max-h-100">
                 <div className="px-4 py-3 border-b border-gray-700">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-white">{t("notifications") || "Notifications"}</h3>
@@ -200,7 +200,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
                       <div
                         key={notification.id}
                         className={`px-4 py-3 border-b border-gray-700 last:border-b-0 cursor-pointer hover:bg-gray-700/50 transition-colors duration-150 ${
-                          !notification.is_read ? 'bg-blue-500/10 border-l-4 border-l-blue-500' : ''
+                          !notification.is_read ? 'bg-black/85 border-l-4 border-l-blue-500' : ''
                         }`}
                         onClick={() => {
                           if (!notification.is_read) {
@@ -236,7 +236,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
                 </div>
 
                 {notifications.length > 0 && (
-                  <div className="px-4 py-3 border-t border-gray-700 bg-gray-900/50">
+                  <div className="px-4 py-3 border-t border-gray-700 bg-black/85">
                     <button
                       onClick={() => {
                         notifications.forEach(notification => {

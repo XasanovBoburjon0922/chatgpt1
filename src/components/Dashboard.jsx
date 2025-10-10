@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
 import { toast, ToastContainer } from "react-toastify";
@@ -25,7 +25,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
-  const [streamingResponse, setStreamingResponse] = useState(""); // New state for streaming chunks
+  const [streamingResponse, setStreamingResponse] = useState("");
   const [userId] = useState(localStorage.getItem("user_id"));
   const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -58,7 +58,6 @@ function Dashboard() {
     setIsSidebarOpen(!isHistoryOpen);
   };
 
-  // WebSocket connection management with reconnect
   const connectWebSocket = (roomId) => {
     if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
       console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
@@ -86,7 +85,7 @@ function Dashboard() {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
 
-        if (data.type === "gemini" || data.type === "gpt" && data.response && typeof data.response === "string") {
+        if (data.type === "gemini" || (data.type === "gpt" && data.response)) {
           const responseText = data.response.trim();
           if (responseText) {
             setNewResponse({
@@ -100,7 +99,7 @@ function Dashboard() {
                   : item
               )
             );
-            setStreamingResponse(""); // Reset streaming response
+            setStreamingResponse("");
           } else {
             console.warn("Empty response received");
           }
@@ -436,7 +435,7 @@ function Dashboard() {
     }
   };
 
-  const createChatRoom = async () => {
+  const createChatRoom = async (firstMessage) => {
     if (!isAuthenticated || !user?.full_name) {
       return null;
     }
@@ -452,7 +451,7 @@ function Dashboard() {
 
       const response = await axios.post(
         `${API_BASE_URL}/chat/room/create`,
-        { user_id: userId },
+        { user_id: userId, title: firstMessage?.substring(0, 50) || "New Chat" },
         {
           headers: {
             Authorization: `${token}`,
@@ -464,10 +463,6 @@ function Dashboard() {
       const newRoomId = response.data.ID;
       console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
-      setChatHistory([]);
-      setDisplayedResponse({});
-      setNewResponse(null);
-      setStreamingResponse("");
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -502,6 +497,19 @@ function Dashboard() {
     });
   };
 
+  const handleNewChat = async () => {
+    if (!isAuthenticated || !user?.full_name) {
+      toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    navigate("/"); // Navigate to the base URL to clear current chat
+    setChatHistory([]);
+    setDisplayedResponse({});
+    setNewResponse(null);
+    setStreamingResponse("");
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  };
+
   const handleSend = async () => {
     if (!message.trim()) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
@@ -529,7 +537,7 @@ function Dashboard() {
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
-      currentChatRoomId = await createChatRoom();
+      currentChatRoomId = await createChatRoom(message);
       if (!currentChatRoomId) {
         await fetchChatRooms();
         if (conversations.length > 0) {
@@ -667,6 +675,8 @@ function Dashboard() {
     });
   };
 
+  const hasAnyResponse = chatHistory.some(chat => chat.finalResponse || displayedResponse[chat.request]);
+
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
       <div className="block md:hidden">
@@ -680,9 +690,8 @@ function Dashboard() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
           <div className="hidden md:block">
             <Header
@@ -706,6 +715,7 @@ function Dashboard() {
               isAuthenticated={isAuthenticated}
               user={user}
               navigate={navigate}
+              handleNewChat={handleNewChat}
             />
           </div>
         </div>
@@ -726,6 +736,11 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
+            {isAuthenticated && !chatId && !hasAnyResponse && (
+              <div className="mb-4 border border-red-500 rounded bg-gray-900 p-2 text-center text-gray-300 text-sm">
+                Premium
+              </div>
+            )}
             {isAuthenticated && chatId && chatHistory.map((chat, index) => (
               <ChatMessage
                 key={index}
@@ -739,6 +754,11 @@ function Dashboard() {
               />
             ))}
           </div>
+          {hasAnyResponse && (
+            <div className="mb-4 border border-red-500 rounded bg-gray-900 p-2 text-center text-gray-300 text-sm">
+              IMZO can make mistakes. Please double check responses.
+            </div>
+          )}
           <ChatInput
             message={message}
             setMessage={setMessage}

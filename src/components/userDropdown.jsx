@@ -43,10 +43,10 @@ const UserDropdown = () => {
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center space-x-3 hover:bg-gray-800/50 px-3 py-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex items-center space-x-3 bg-black/85 hover:bg-gray-800/50 px-3 py-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+          className="w-8 h-8 rounded-full bg-black/85 flex items-center justify-center text-white font-bold text-sm"
           style={{
             background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
           }}
@@ -77,7 +77,7 @@ const UserDropdown = () => {
           />
           
           {/* Dropdown Menu */}
-          <div className="absolute right-0 top-full mt-2 w-56 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-20 overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 w-56 bg-black/85 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-20 overflow-hidden">
             <div className="p-3 border-b border-gray-700">
               <div className="flex items-center space-x-3">
                 <div 
