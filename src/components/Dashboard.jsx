@@ -45,6 +45,12 @@ function Dashboard() {
   const navigate = useNavigate();
   const { chatId } = useParams();
 
+  // Yangi state'lar
+  const [geminiResponse, setGeminiResponse] = useState(null);
+  const [showGemini, setShowGemini] = useState(false);
+  const [geminiTimer, setGeminiTimer] = useState(null);
+  const [pendingChunks, setPendingChunks] = useState(""); // Fixed: Corrected variable naming
+
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
@@ -85,27 +91,11 @@ function Dashboard() {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
 
-        if (data.type === "gemini" || (data.type === "gpt" && data.response)) {
-          const responseText = data.response.trim();
-          if (responseText) {
-            setNewResponse({
-              request: chatHistory[chatHistory.length - 1]?.request || message,
-              response: responseText,
-            });
-            setChatHistory((prev) =>
-              prev.map((item, index) =>
-                index === prev.length - 1
-                  ? { ...item, finalResponse: responseText, isLoading: false }
-                  : item
-              )
-            );
-            setStreamingResponse("");
+        if (data.type === "chunk" && data.data && typeof data.data === "string") {
+          const chunkText = data.data;
+          if (showGemini) {
+            setPendingChunks((prev) => prev + chunkText);
           } else {
-            console.warn("Empty response received");
-          }
-        } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
-          const chunkText = data.data.trim();
-          if (chunkText) {
             setStreamingResponse((prev) => prev + chunkText);
             setChatHistory((prev) =>
               prev.map((item, index) =>
@@ -114,15 +104,17 @@ function Dashboard() {
                   : item
               )
             );
-            setDisplayedResponse((prev) => ({
-              ...prev,
-              [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
-            }));
-          } else {
-            console.warn("Empty chunk received");
           }
-        } else {
-          console.warn("Invalid message format:", data);
+        } else if (data.status === "end") {
+          // When streaming is complete, stop loading
+          setLoading(false);
+          setChatHistory((prev) =>
+            prev.map((item, index) =>
+              index === prev.length - 1
+                ? { ...item, isLoading: false }
+                : item
+            )
+          );
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -154,23 +146,23 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && chatId) {
+    if (isAuthenticated && user?.full_name && chatId && !ws) {
       connectWebSocket(chatId);
-      return () => {
-        if (ws) {
-          ws.close();
-          setWs(null);
-          setIsConnected(false);
-        }
-      };
     }
+    return () => {
+      if (ws) {
+        ws.close();
+        setWs(null);
+        setIsConnected(false);
+      }
+      if (geminiTimer) {
+        clearTimeout(geminiTimer);
+      }
+    };
   }, [isAuthenticated, user, chatId]);
 
   const handleFileUpload = async (file, question) => {
-    if (!file || !question) {
-      toast.error(t("fileAndQuestionRequired"), { theme: "dark", position: "top-center" });
-      return;
-    }
+    if (!file || !question || loading) return;
 
     if (!isAuthenticated || !user?.full_name) {
       navigate("/login");
@@ -217,7 +209,7 @@ function Dashboard() {
               : item
           )
         );
-        setNewResponse({ request: question, response: analysisData.responce });
+        setLoading(false); // Stop loading after file upload response
         toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
       }
     } catch (err) {
@@ -230,7 +222,6 @@ function Dashboard() {
             : item
         )
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -254,17 +245,12 @@ function Dashboard() {
           },
         });
 
-        console.log(`Polling attempt ${i + 1}:`, response.data);
-
         if (response.status === 200) {
           if (response.data.responce && response.data.responce.trim() !== "") {
             return response.data;
           }
           if (response.data.status === "completed") {
             return response.data;
-          }
-          if (response.data.status === "pending" || !response.data.responce) {
-            console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
           }
         }
       } catch (error) {
@@ -273,7 +259,6 @@ function Dashboard() {
           navigate("/login");
           throw error;
         }
-        console.error(`Polling attempt ${i + 1} failed:`, error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -302,16 +287,16 @@ function Dashboard() {
   }, [isAuthenticated, user, pendingMessage]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name) {
+    if (isAuthenticated && user?.full_name && !conversations.length) {
       fetchChatRooms();
-      if (chatId) {
-        fetchChatHistory(chatId);
-      } else {
-        setChatHistory([]);
-        setDisplayedResponse({});
-        setNewResponse(null);
-        setStreamingResponse("");
-      }
+    }
+    if (chatId && !chatHistory.length) {
+      fetchChatHistory(chatId);
+    } else if (!chatId) {
+      setChatHistory([]);
+      setDisplayedResponse({});
+      setNewResponse(null);
+      setStreamingResponse("");
     }
   }, [isAuthenticated, user, chatId]);
 
@@ -319,39 +304,10 @@ function Dashboard() {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatHistory, displayedResponse, streamingResponse]);
-
-  useEffect(() => {
-    if (newResponse?.request && newResponse?.response) {
-      let currentText = "";
-      const fullText = newResponse.response;
-      const request = newResponse.request;
-      let index = 0;
-
-      const type = () => {
-        if (index < fullText.length) {
-          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
-          currentText += fullText.slice(index, index + step);
-          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += step;
-          setTimeout(type, 50);
-        } else {
-          setChatHistory((prev) =>
-            prev.map((item) =>
-              item.request === request
-                ? { ...item, finalResponse: fullText, isLoading: false }
-                : item
-            )
-          );
-          setNewResponse(null);
-        }
-      };
-      type();
-    }
-  }, [newResponse]);
+  }, [chatHistory, displayedResponse, streamingResponse, showGemini, geminiResponse]);
 
   const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name) return;
+    if (!isAuthenticated || !user?.full_name || conversations.length) return;
 
     try {
       setLoading(true);
@@ -384,7 +340,7 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId) {
+    if (!isAuthenticated || !user?.full_name || !roomId || chatHistory.length) {
       return;
     }
 
@@ -436,7 +392,7 @@ function Dashboard() {
   };
 
   const createChatRoom = async (firstMessage) => {
-    if (!isAuthenticated || !user?.full_name) {
+    if (!isAuthenticated || !user?.full_name || loading) {
       return null;
     }
 
@@ -502,16 +458,20 @@ function Dashboard() {
       toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
       return;
     }
-    navigate("/"); // Navigate to the base URL to clear current chat
+    navigate("/");
     setChatHistory([]);
     setDisplayedResponse({});
     setNewResponse(null);
     setStreamingResponse("");
+    setShowGemini(false);
+    setGeminiResponse(null);
+    setPendingChunks("");
+    if (geminiTimer) clearTimeout(geminiTimer);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
   const handleSend = async () => {
-    if (!message.trim()) {
+    if (!message.trim() || loading) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
@@ -528,12 +488,17 @@ function Dashboard() {
       return;
     }
 
-    if (loading) {
-      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
-      return;
-    }
-
     setLoading(true);
+
+    // Clear previous Gemini states
+    if (geminiTimer) {
+      clearTimeout(geminiTimer);
+      setGeminiTimer(null);
+    }
+    setShowGemini(false);
+    setGeminiResponse(null);
+    setPendingChunks("");
+    setStreamingResponse("");
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
@@ -578,7 +543,6 @@ function Dashboard() {
       isLoading: true,
     };
     setChatHistory((prev) => [...prev, newMessage]);
-    setStreamingResponse("");
     setMessage("");
 
     try {
@@ -649,14 +613,15 @@ function Dashboard() {
   };
 
   const renderAssistantResponse = (responseText) => {
-    if (!responseText) return null;
+    if (!responseText || typeof responseText !== 'string') return null;
 
-    const lines = responseText.split(/\n+/).filter((line) => line.trim());
+    const lines = responseText.split(/\n+/).filter((line) => line.trim() !== '');
 
     return lines.map((line, index) => {
       let formattedLine = line;
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      formattedLine = formattedLine.replace(/`(.*?)`/g, "<code>$1</code>");
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
@@ -668,7 +633,7 @@ function Dashboard() {
       }
 
       return (
-        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2">
+        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2 break-words max-w-prose whitespace-pre-wrap">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
       );
@@ -737,25 +702,32 @@ function Dashboard() {
               </div>
             )}
             {isAuthenticated && !chatId && !hasAnyResponse && (
-              <div className="mb-4 border border-red-500 rounded bg-gray-900 p-2 text-center text-gray-300 text-sm">
+              <div className="mb-[60px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
                 Premium
               </div>
             )}
-            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
-              <ChatMessage
-                key={index}
-                message={chat.request}
-                initialAssistantMessage={chat.initialAssistantMessage}
-                finalResponse={renderAssistantResponse(
-                  displayedResponse[chat.request] || chat.finalResponse
-                )}
-                isLoading={chat.isLoading}
-                isMobile={isMobile}
-              />
-            ))}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => {
+              const isLastMessage = index === chatHistory.length - 1;
+              const responseText = displayedResponse[chat.request] || chat.finalResponse || streamingResponse;
+              const finalResponse = isLastMessage && showGemini 
+                ? renderAssistantResponse(geminiResponse) 
+                : renderAssistantResponse(responseText);
+              const isLoading = isLastMessage && chat.isLoading && !showGemini;
+
+              return (
+                <ChatMessage
+                  key={index}
+                  message={chat.request}
+                  initialAssistantMessage={chat.initialAssistantMessage}
+                  finalResponse={finalResponse}
+                  isLoading={isLoading}
+                  isMobile={isMobile}
+                />
+              );
+            })}
           </div>
           {hasAnyResponse && (
-            <div className="mb-4 border border-red-500 rounded bg-gray-900 p-2 text-center text-gray-300 text-sm">
+            <div className="mb-[80px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
               IMZO can make mistakes. Please double check responses.
             </div>
           )}
