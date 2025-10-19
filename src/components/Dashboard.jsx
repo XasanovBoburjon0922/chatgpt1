@@ -42,6 +42,7 @@ function Dashboard() {
   const reconnectDelay = 3000;
   const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
+  const isUserScrolling = useRef(false);
   const navigate = useNavigate();
   const { chatId } = useParams();
 
@@ -49,7 +50,7 @@ function Dashboard() {
   const [geminiResponse, setGeminiResponse] = useState(null);
   const [showGemini, setShowGemini] = useState(false);
   const [geminiTimer, setGeminiTimer] = useState(null);
-  const [pendingChunks, setPendingChunks] = useState(""); // Fixed: Corrected variable naming
+  const [pendingChunks, setPendingChunks] = useState("");
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -301,9 +302,25 @@ function Dashboard() {
   }, [isAuthenticated, user, chatId]);
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
+
+    const handleScroll = () => {
+      const isAtBottom =
+        chatContainer.scrollHeight - chatContainer.scrollTop <=
+        chatContainer.clientHeight + 50; // 50px tolerance
+      isUserScrolling.current = !isAtBottom;
+    };
+
+    chatContainer.addEventListener("scroll", handleScroll);
+
+    if (!isUserScrolling.current) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
+
+    return () => {
+      chatContainer.removeEventListener("scroll", handleScroll);
+    };
   }, [chatHistory, displayedResponse, streamingResponse, showGemini, geminiResponse]);
 
   const fetchChatRooms = async () => {
