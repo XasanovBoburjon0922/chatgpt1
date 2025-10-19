@@ -46,7 +46,6 @@ function Dashboard() {
   const navigate = useNavigate();
   const { chatId } = useParams();
 
-  // Yangi state'lar
   const [geminiResponse, setGeminiResponse] = useState(null);
   const [showGemini, setShowGemini] = useState(false);
   const [geminiTimer, setGeminiTimer] = useState(null);
@@ -107,7 +106,6 @@ function Dashboard() {
             );
           }
         } else if (data.status === "end") {
-          // When streaming is complete, stop loading
           setLoading(false);
           setChatHistory((prev) =>
             prev.map((item, index) =>
@@ -210,7 +208,7 @@ function Dashboard() {
               : item
           )
         );
-        setLoading(false); // Stop loading after file upload response
+        setLoading(false);
         toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
       }
     } catch (err) {
@@ -308,7 +306,7 @@ function Dashboard() {
     const handleScroll = () => {
       const isAtBottom =
         chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 50; // 50px tolerance
+        chatContainer.clientHeight + 50;
       isUserScrolling.current = !isAtBottom;
     };
 
@@ -507,7 +505,6 @@ function Dashboard() {
 
     setLoading(true);
 
-    // Clear previous Gemini states
     if (geminiTimer) {
       clearTimeout(geminiTimer);
       setGeminiTimer(null);
@@ -639,6 +636,10 @@ function Dashboard() {
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
       formattedLine = formattedLine.replace(/`(.*?)`/g, "<code>$1</code>");
+      formattedLine = formattedLine.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+      formattedLine = formattedLine.replace(/^### (.*)$/gm, '<h2>$1</h2>');
+      // Replace --- with <hr />
+      formattedLine = formattedLine.replace(/^---$/gm, '<hr />');
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
