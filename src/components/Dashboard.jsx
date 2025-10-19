@@ -663,7 +663,8 @@ function Dashboard() {
   // Function to handle profile click (navigate to settings or open modal)
   const handleProfileClick = () => {
     // Replace with your logic (e.g., navigate to /settings or open a modal)
-    navigate("/settings"); // Example navigation to settings page
+    // navigate("/settings"); // Example navigation to settings page
+    console.error("navigate", error);
   };
 
   const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
