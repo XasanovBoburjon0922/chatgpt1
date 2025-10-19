@@ -660,6 +660,14 @@ function Dashboard() {
 
   const hasAnyResponse = chatHistory.some(chat => chat.finalResponse || displayedResponse[chat.request]);
 
+  // Function to handle profile click (navigate to settings or open modal)
+  const handleProfileClick = () => {
+    // Replace with your logic (e.g., navigate to /settings or open a modal)
+    navigate("/settings"); // Example navigation to settings page
+  };
+
+  const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
+
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
       <div className="block md:hidden">
@@ -685,21 +693,38 @@ function Dashboard() {
               toggleHistoryPanel={toggleHistoryPanel}
             />
           </div>
-          <div className="h-full w-full flex">
-            <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
-            <SidebarContent
-              activeTab={activeTab}
-              setIsSidebarOpen={setIsSidebarOpen}
-              fetchChatHistory={fetchChatHistory}
-              chatRoomId={chatId}
-              conversations={conversations}
-              createChatRoom={createChatRoom}
-              loading={loading}
-              isAuthenticated={isAuthenticated}
-              user={user}
-              navigate={navigate}
-              handleNewChat={handleNewChat}
-            />
+          <div className="flex flex-col h-[100%]">
+            <div className="h-[80%] sm:h-[100%] w-full flex">
+              <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
+              <SidebarContent
+                activeTab={activeTab}
+                setIsSidebarOpen={setIsSidebarOpen}
+                fetchChatHistory={fetchChatHistory}
+                chatRoomId={chatId}
+                conversations={conversations}
+                createChatRoom={createChatRoom}
+                loading={loading}
+                isAuthenticated={isAuthenticated}
+                user={user}
+                navigate={navigate}
+                handleNewChat={handleNewChat}
+              />
+            </div>
+            {/* Mobile-only profile section */}
+            {isMobile && isAuthenticated && (
+              <div
+                className="flex items-center justify-between p-2 bg-black/85 border-t border-gray-800 cursor-pointer"
+                onClick={handleProfileClick}
+              >
+                <div className="flex items-center">
+                  <div className="w-8 h-8 mr-2">
+                    <img src="/src/assets/profile.png" alt="Profile" className="w-full bg-[white] h-full rounded-full object-cover" />
+                  </div>
+                  <span className="text-white text-sm font-medium">{storedFullName}</span>
+                  <span className="ml-1 text-blue-400 text-xs">✓</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex-1 flex flex-col">
