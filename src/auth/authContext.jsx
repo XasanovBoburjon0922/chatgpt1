@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
     const phoneNumber = localStorage.getItem('phone_number');
 
     if (accessToken && refreshToken && fullName) {
-      setUser({ full_name: fullName });
+      setUser({ full_name: fullName, phone_number: phoneNumber });
       setIsAuthenticated(true);
       axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     } else {
@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('full_name');
+    localStorage.removeItem('phone_number');
     
     setUser(null);
     setIsAuthenticated(false);

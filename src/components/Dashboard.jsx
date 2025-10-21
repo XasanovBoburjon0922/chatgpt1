@@ -45,6 +45,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const { chatId } = useParams();
   const location = useLocation();
+  const [showGemini, setShowGemini] = useState(false);
+
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -93,25 +95,11 @@ function Dashboard() {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
 
-        if (data.type === "gemini" || (data.type === "gpt" && data.response && typeof data.response === "string")) {
-          const responseText = data.response.trim();
-          if (responseText) {
-            setNewResponse({
-              request: chatHistory[chatHistory.length - 1]?.request || message,
-              response: responseText,
-            });
-            setChatHistory((prev) =>
-              prev.map((item, index) =>
-                index === prev.length - 1
-                  ? { ...item, finalResponse: responseText, isLoading: false }
-                  : item
-              )
-            );
-            setStreamingResponse("");
-          }
-        } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
-          const chunkText = data.data.trim();
-          if (chunkText) {
+        if (data.type === "chunk" && data.data && typeof data.data === "string") {
+          const chunkText = data.data;
+          if (showGemini) {
+            setPendingChunks((prev) => prev + chunkText);
+          } else {
             setStreamingResponse((prev) => prev + chunkText);
             setChatHistory((prev) =>
               prev.map((item, index) =>
@@ -120,11 +108,16 @@ function Dashboard() {
                   : item
               )
             );
-            setDisplayedResponse((prev) => ({
-              ...prev,
-              [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
-            }));
           }
+        } else if (data.status === "end") {
+          setLoading(false);
+          setChatHistory((prev) =>
+            prev.map((item, index) =>
+              index === prev.length - 1
+                ? { ...item, isLoading: false }
+                : item
+            )
+          );
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -627,6 +620,13 @@ function Dashboard() {
     navigate("/login");
   };
 
+  // Chat tanlanganda chaqiriladigan funksiya
+  const handleConversationSelect = (convId) => {
+    navigate(`/c/${convId}`);
+    fetchChatHistory(convId);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  };
+
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
 
@@ -656,13 +656,6 @@ function Dashboard() {
         </p>
       );
     });
-  };
-
-  // Chat tanlanganda chaqiriladigan funksiya
-  const handleConversationSelect = (convId) => {
-    navigate(`/c/${convId}`);
-    fetchChatHistory(convId);
-    if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
   return (
@@ -705,6 +698,7 @@ function Dashboard() {
                 user={user}
                 navigate={navigate}
                 handleNewChat={handleNewChat}
+                onConversationSelect={handleConversationSelect} // YANGI QATOR
               />
             </div>
 
@@ -745,18 +739,30 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
-              <ChatMessage
-                key={index}
-                message={chat.request}
-                initialAssistantMessage={chat.initialAssistantMessage}
-                finalResponse={renderAssistantResponse(
-                  displayedResponse[chat.request] || chat.finalResponse
-                )}
-                isLoading={chat.isLoading}
-                isMobile={isMobile}
-              />
-            ))}
+            {isAuthenticated && !chatId && (
+              <div className="mb-[10px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
+                Premium
+              </div>
+            )}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => {
+              const isLastMessage = index === chatHistory.length - 1;
+              const responseText = displayedResponse[chat.request] || chat.finalResponse || streamingResponse;
+              const finalResponse = isLastMessage && showGemini
+                ? renderAssistantResponse(geminiResponse)
+                : renderAssistantResponse(responseText);
+              const isLoading = isLastMessage && chat.isLoading && !showGemini;
+
+              return (
+                <ChatMessage
+                  key={index}
+                  message={chat.request}
+                  initialAssistantMessage={chat.initialAssistantMessage}
+                  finalResponse={finalResponse}
+                  isLoading={isLoading}
+                  isMobile={isMobile}
+                />
+              );
+            })}
           </div>
           <ChatInput
             message={message}

@@ -11,7 +11,7 @@ const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
-  const { user, isAuthenticated, login } = useAuth();
+  const { user, isAuthenticated, login, logout } = useAuth(); // logout qo'shildi
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState("");
@@ -82,7 +82,7 @@ export default function ProfilePage() {
         }
       );
 
-      login({ ...user, full_name: fullName, phone_number: phoneNumber }, token);
+      login({ ...user, full_name: fullName, phone_number: phoneNumber }, { access_token: token });
       localStorage.setItem("full_name", fullName);
 
       toast.success(t("save"), { theme: "dark" });
@@ -103,8 +103,8 @@ export default function ProfilePage() {
     return selectedLang === "uz" ? "O'zbekcha" : "Русский";
   };
 
-// === MOBILE VIEW (rasmdagi kabi) ===
-if (isMobile) {
+  // === MOBILE VIEW ===
+  if (isMobile) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col">
         {/* Header with Back Button */}
@@ -117,9 +117,14 @@ if (isMobile) {
             <span className="text-sm">Orqaga</span>
           </button>
           <h1 className="text-xl font-bold">Profil</h1>
-          <div className="w-8" /> {/* Spacer for alignment */}
+          <button
+            onClick={logout}
+            className="text-red-500 hover:text-red-400 transition text-sm font-medium"
+          >
+            Chiqish
+          </button>
         </div>
-  
+
         <div className="flex-1 px-4 py-6 overflow-y-auto">
           {/* Account Section */}
           <div className="bg-[#1a1a1a] rounded-lg p-4 mb-4">
@@ -132,8 +137,7 @@ if (isMobile) {
               </div>
               <span className="text-blue-400 text-bold text-[22px]">{fullName}</span>
             </div>
-  
-            {/* Edit Name Input (only in edit mode) */}
+
             {isEditing && (
               <input
                 type="text"
@@ -144,11 +148,11 @@ if (isMobile) {
               />
             )}
           </div>
-  
+
           {/* App Settings */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-400 mb-2">App</h3>
-  
+
             {/* Language */}
             <div
               className="bg-[#1a1a1a] rounded-lg p-4 flex justify-between items-center cursor-pointer"
@@ -160,7 +164,7 @@ if (isMobile) {
               </div>
               <span className="text-gray-400">{getLangText()} &gt;</span>
             </div>
-  
+
             {/* Appearance */}
             <div className="bg-[#1a1a1a] rounded-lg p-4 flex justify-between items-center">
               <div className="flex items-center">
@@ -170,7 +174,7 @@ if (isMobile) {
               <span className="text-gray-400">Dark Mode</span>
             </div>
           </div>
-  
+
           {/* Edit / Save Buttons */}
           {isEditing ? (
             <div className="mt-6 flex gap-3">
@@ -198,7 +202,7 @@ if (isMobile) {
             </button>
           )}
         </div>
-  
+
         {/* Language Modal */}
         {showLangModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
@@ -239,19 +243,27 @@ if (isMobile) {
     );
   }
 
-  // === DESKTOP VIEW (Zamonaviy) ===
+  // === DESKTOP VIEW ===
   return (
     <div className="min-h-screen bg-black text-white flex">
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-2xl w-full bg-gradient-to-br from-gray-900 to-black rounded-3xl p-8 shadow-2xl border border-gray-800">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">Profil Sozlamalari</h1>
-            <button
-              onClick={() => navigate("/")}
-              className="text-gray-400 hover:text-white transition"
-            >
-              &gt; Orqaga
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/")}
+                className="text-gray-400 hover:text-white transition"
+              >
+                &gt; Orqaga
+              </button>
+              <button
+                onClick={logout}
+                className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-xl font-medium transition"
+              >
+                Chiqish
+              </button>
+            </div>
           </div>
 
           {/* Profile Card */}
