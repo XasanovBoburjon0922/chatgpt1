@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     const accessToken = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem('refresh_token');
     const fullName = localStorage.getItem('full_name');
+    const phoneNumber = localStorage.getItem('phone_number');
 
     if (accessToken && refreshToken && fullName) {
       setUser({ full_name: fullName });
@@ -41,6 +42,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('access_token', tokens.access_token);
     localStorage.setItem('refresh_token', tokens.refresh_token);
     localStorage.setItem('full_name', userInfo.full_name);
+    localStorage.setItem('phone_number', userInfo.phone_number);
     
     setUser(userInfo);
     setIsAuthenticated(true);

@@ -1,9 +1,8 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
 
 const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoading }) => {
   return (
-    <div className="mb-3 px-4 space-y-3">
+    <div className="my-3 space-y-3">
       {/* User Message */}
       <div className="flex justify-end">
         <div className="bg-[#2d2d2d] rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%]">
@@ -14,7 +13,7 @@ const ChatMessage = ({ message, initialAssistantMessage, finalResponse, isLoadin
       {/* Assistant Response */}
       {(initialAssistantMessage || finalResponse || isLoading) && (
         <div className="flex justify-start">
-          <div className="bg-[#1a1a1a] rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+          <div className="py-3 max-w-[100%]">
             <div className="text-white text-[15px] leading-relaxed space-y-2">
               {isLoading && !initialAssistantMessage && !finalResponse && (
                 <div className="flex space-x-1">

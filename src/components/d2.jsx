@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
 import { toast, ToastContainer } from "react-toastify";
@@ -44,10 +44,18 @@ function Dashboard() {
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
+  const location = useLocation();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
+  useEffect(() => {
+    if (location.pathname.startsWith("/categories")) {
+      setActiveTab("categories");
+    } else {
+      setActiveTab("history");
+    }
+  }, [location.pathname]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -100,8 +108,6 @@ function Dashboard() {
               )
             );
             setStreamingResponse("");
-          } else {
-            console.warn("Empty response received");
           }
         } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
           const chunkText = data.data.trim();
@@ -118,11 +124,7 @@ function Dashboard() {
               ...prev,
               [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
             }));
-          } else {
-            console.warn("Empty chunk received");
           }
-        } else {
-          console.warn("Invalid message format:", data);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -136,7 +138,6 @@ function Dashboard() {
       if (reconnectAttempts < maxReconnectAttempts) {
         setTimeout(() => {
           setReconnectAttempts((prev) => prev + 1);
-          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
           connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
@@ -186,7 +187,6 @@ function Dashboard() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -240,7 +240,6 @@ function Dashboard() {
     const delay = 4000;
     const token = localStorage.getItem("access_token");
     if (!token) {
-      console.error("Access token not found");
       navigate("/login");
       throw new Error("Access token not found");
     }
@@ -254,26 +253,14 @@ function Dashboard() {
           },
         });
 
-        console.log(`Polling attempt ${i + 1}:`, response.data);
-
-        if (response.status === 200) {
-          if (response.data.responce && response.data.responce.trim() !== "") {
-            return response.data;
-          }
-          if (response.data.status === "completed") {
-            return response.data;
-          }
-          if (response.data.status === "pending" || !response.data.responce) {
-            console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
-          }
+        if (response.status === 200 && response.data.responce && response.data.responce.trim() !== "") {
+          return response.data;
         }
       } catch (error) {
-        console.error("Polling error:", error);
         if (error.response?.status === 401) {
           navigate("/login");
           throw error;
         }
-        console.error(`Polling attempt ${i + 1} failed:`, error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -301,6 +288,7 @@ function Dashboard() {
     }
   }, [isAuthenticated, user, pendingMessage]);
 
+  // Chat tarixi va suhbatlar yuklash
   useEffect(() => {
     if (isAuthenticated && user?.full_name) {
       fetchChatRooms();
@@ -357,7 +345,6 @@ function Dashboard() {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -370,7 +357,7 @@ function Dashboard() {
       });
 
       const { chat_rooms } = response.data;
-      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
+      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title, created_at: room.created_at })));
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
       if (error.response?.status === 401) {
@@ -384,15 +371,12 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId) {
-      return;
-    }
+    if (!isAuthenticated || !user?.full_name || !roomId) return;
 
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -415,9 +399,7 @@ function Dashboard() {
       setChatHistory(newChatHistory);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
-          if (chat.response) {
-            acc[chat.request] = chat.response;
-          }
+          if (chat.response) acc[chat.request] = chat.response;
           return acc;
         }, {})
       );
@@ -436,15 +418,12 @@ function Dashboard() {
   };
 
   const createChatRoom = async (firstMessage) => {
-    if (!isAuthenticated || !user?.full_name) {
-      return null;
-    }
+    if (!isAuthenticated || !user?.full_name) return null;
 
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return null;
       }
@@ -461,7 +440,6 @@ function Dashboard() {
       );
 
       const newRoomId = response.data.ID;
-      console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
       return newRoomId;
     } catch (error) {
@@ -502,7 +480,7 @@ function Dashboard() {
       toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
       return;
     }
-    navigate("/"); // Navigate to the base URL to clear current chat
+    navigate("/");
     setChatHistory([]);
     setDisplayedResponse({});
     setNewResponse(null);
@@ -542,7 +520,6 @@ function Dashboard() {
         await fetchChatRooms();
         if (conversations.length > 0) {
           currentChatRoomId = conversations[0].id;
-          console.log("Using first existing conversation ID:", currentChatRoomId);
         } else {
           toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
           setLoading(false);
@@ -564,7 +541,6 @@ function Dashboard() {
       try {
         await waitForWebSocketConnection(websocket, connectionTimeout);
       } catch (error) {
-        console.error("WebSocket connection failed:", error);
         toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
         setLoading(false);
         return;
@@ -609,7 +585,6 @@ function Dashboard() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -657,6 +632,9 @@ function Dashboard() {
       let formattedLine = line;
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      formattedLine = formattedLine.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+      formattedLine = formattedLine.replace(/^### (.*)$/gm, '<h2>$1</h2>');
+      formattedLine = formattedLine.replace(/^#### (.*)$/gm, '<h2>$1</h2>');
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
@@ -673,6 +651,13 @@ function Dashboard() {
         </p>
       );
     });
+  };
+
+  // Chat tanlanganda chaqiriladigan funksiya
+  const handleConversationSelect = (convId) => {
+    navigate(`/c/${convId}`);
+    fetchChatHistory(convId);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
   return (
@@ -706,15 +691,12 @@ function Dashboard() {
             <SidebarContent
               activeTab={activeTab}
               setIsSidebarOpen={setIsSidebarOpen}
-              fetchChatHistory={fetchChatHistory}
-              chatRoomId={chatId}
               conversations={conversations}
-              createChatRoom={createChatRoom}
               loading={loading}
               isAuthenticated={isAuthenticated}
               user={user}
-              navigate={navigate}
               handleNewChat={handleNewChat}
+              onConversationSelect={handleConversationSelect} // Bu yerda callback beriladi
             />
           </div>
         </div>
@@ -771,6 +753,7 @@ function Dashboard() {
           }}
         />
       )}
+      {/* Modal windows */}
       {isNameModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-black/85 rounded-2xl border border-gray-800 p-4 w-full max-w-xs lg:p-6 lg:max-w-sm">

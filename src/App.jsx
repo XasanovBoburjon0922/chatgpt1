@@ -8,6 +8,7 @@ import DashboardPage from "./components/Dashboard";
 import VerifyPage from "./components/VerifyPage";
 import ApplicationFormPage from "./components/ApplicationFormPage";
 import About from "./pages/About";
+import ProfilePage from "./components/ProfilePage";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/c/:chatId" element={<DashboardPage />} />
         <Route path="/categories" element={<DashboardPage />} />
         <Route path="/about" element={<About />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/document" element={<ApplicationFormPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
