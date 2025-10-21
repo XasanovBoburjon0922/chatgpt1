@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
 import { toast, ToastContainer } from "react-toastify";
@@ -14,7 +14,7 @@ import SidebarIcons from "./sidebar/sidebarIcons";
 import SidebarContent from "./sidebar/sidebarContext";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
-const WS_BASE_URL = "ws://31.187.74.228:8080/ws";
+const WS_BASE_URL = "wss://imzo-ai.uzjoylar.uz/ws";
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
@@ -25,7 +25,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
-  const [streamingResponse, setStreamingResponse] = useState(""); // New state for streaming chunks
+  const [streamingResponse, setStreamingResponse] = useState("");
   const [userId] = useState(localStorage.getItem("user_id"));
   const [isNameModalVisible, setIsNameModalVisible] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -42,8 +42,15 @@ function Dashboard() {
   const reconnectDelay = 3000;
   const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
+  const isUserScrolling = useRef(false);
+  const scrollTimeoutRef = useRef(null);
   const navigate = useNavigate();
   const { chatId } = useParams();
+
+  const [geminiResponse, setGeminiResponse] = useState(null);
+  const [showGemini, setShowGemini] = useState(false);
+  const [geminiTimer, setGeminiTimer] = useState(null);
+  const [pendingChunks, setPendingChunks] = useState("");
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -58,7 +65,6 @@ function Dashboard() {
     setIsSidebarOpen(!isHistoryOpen);
   };
 
-  // WebSocket connection management with reconnect
   const connectWebSocket = (roomId) => {
     if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
       console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
@@ -86,27 +92,11 @@ function Dashboard() {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
 
-        if (data.type === "response" && data.response && typeof data.response === "string") {
-          const responseText = data.response.trim();
-          if (responseText) {
-            setNewResponse({
-              request: chatHistory[chatHistory.length - 1]?.request || message,
-              response: responseText,
-            });
-            setChatHistory((prev) =>
-              prev.map((item, index) =>
-                index === prev.length - 1
-                  ? { ...item, finalResponse: responseText, isLoading: false }
-                  : item
-              )
-            );
-            setStreamingResponse(""); // Reset streaming response
+        if (data.type === "chunk" && data.data && typeof data.data === "string") {
+          const chunkText = data.data;
+          if (showGemini) {
+            setPendingChunks((prev) => prev + chunkText);
           } else {
-            console.warn("Empty response received");
-          }
-        } else if (data.type === "chunk" && data.data && typeof data.data === "string") {
-          const chunkText = data.data.trim();
-          if (chunkText) {
             setStreamingResponse((prev) => prev + chunkText);
             setChatHistory((prev) =>
               prev.map((item, index) =>
@@ -115,15 +105,16 @@ function Dashboard() {
                   : item
               )
             );
-            setDisplayedResponse((prev) => ({
-              ...prev,
-              [chatHistory[chatHistory.length - 1]?.request || message]: (prev[chatHistory[chatHistory.length - 1]?.request || message] || "") + chunkText,
-            }));
-          } else {
-            console.warn("Empty chunk received");
           }
-        } else {
-          console.warn("Invalid message format:", data);
+        } else if (data.status === "end") {
+          setLoading(false);
+          setChatHistory((prev) =>
+            prev.map((item, index) =>
+              index === prev.length - 1
+                ? { ...item, isLoading: false }
+                : item
+            )
+          );
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -155,23 +146,23 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && chatId) {
+    if (isAuthenticated && user?.full_name && chatId && !ws) {
       connectWebSocket(chatId);
-      return () => {
-        if (ws) {
-          ws.close();
-          setWs(null);
-          setIsConnected(false);
-        }
-      };
     }
+    return () => {
+      if (ws) {
+        ws.close();
+        setWs(null);
+        setIsConnected(false);
+      }
+      if (geminiTimer) {
+        clearTimeout(geminiTimer);
+      }
+    };
   }, [isAuthenticated, user, chatId]);
 
   const handleFileUpload = async (file, question) => {
-    if (!file || !question) {
-      toast.error(t("fileAndQuestionRequired"), { theme: "dark", position: "top-center" });
-      return;
-    }
+    if (!file || !question || loading) return;
 
     if (!isAuthenticated || !user?.full_name) {
       navigate("/login");
@@ -218,7 +209,7 @@ function Dashboard() {
               : item
           )
         );
-        setNewResponse({ request: question, response: analysisData.responce });
+        setLoading(false);
         toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
       }
     } catch (err) {
@@ -231,7 +222,6 @@ function Dashboard() {
             : item
         )
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -255,17 +245,12 @@ function Dashboard() {
           },
         });
 
-        console.log(`Polling attempt ${i + 1}:`, response.data);
-
         if (response.status === 200) {
           if (response.data.responce && response.data.responce.trim() !== "") {
             return response.data;
           }
           if (response.data.status === "completed") {
             return response.data;
-          }
-          if (response.data.status === "pending" || !response.data.responce) {
-            console.log(`Response not ready yet, status: ${response.data.status || "unknown"}`);
           }
         }
       } catch (error) {
@@ -274,7 +259,6 @@ function Dashboard() {
           navigate("/login");
           throw error;
         }
-        console.error(`Polling attempt ${i + 1} failed:`, error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -303,56 +287,57 @@ function Dashboard() {
   }, [isAuthenticated, user, pendingMessage]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name) {
+    if (isAuthenticated && user?.full_name && !conversations.length) {
       fetchChatRooms();
-      if (chatId) {
-        fetchChatHistory(chatId);
-      } else {
-        setChatHistory([]);
-        setDisplayedResponse({});
-        setNewResponse(null);
-        setStreamingResponse("");
-      }
+    }
+    if (chatId && !chatHistory.length) {
+      fetchChatHistory(chatId);
+    } else if (!chatId) {
+      setChatHistory([]);
+      setDisplayedResponse({});
+      setNewResponse(null);
+      setStreamingResponse("");
     }
   }, [isAuthenticated, user, chatId]);
 
+  // SCROLL LOGIKASI – ESKI KODDAGIDAN Olingan va To‘g‘rilangan
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory, displayedResponse, streamingResponse]);
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
 
-  useEffect(() => {
-    if (newResponse?.request && newResponse?.response) {
-      let currentText = "";
-      const fullText = newResponse.response;
-      const request = newResponse.request;
-      let index = 0;
+    const handleScroll = () => {
+      const isAtBottom =
+        chatContainer.scrollHeight - chatContainer.scrollTop <=
+        chatContainer.clientHeight + 50;
 
-      const type = () => {
-        if (index < fullText.length) {
-          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
-          currentText += fullText.slice(index, index + step);
-          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
-          index += step;
-          setTimeout(type, 50);
-        } else {
-          setChatHistory((prev) =>
-            prev.map((item) =>
-              item.request === request
-                ? { ...item, finalResponse: fullText, isLoading: false }
-                : item
-            )
-          );
-          setNewResponse(null);
-        }
-      };
-      type();
+      isUserScrolling.current = !isAtBottom;
+
+      // 2 soniya ichida harakat bo‘lmasa, avto-scrollni qaytar
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        isUserScrolling.current = false;
+      }, 2000);
+    };
+
+    chatContainer.addEventListener("scroll", handleScroll);
+
+    // Har safar yangi xabar kelganda, agar foydalanuvchi pastda bo‘lsa, scrollni pastga tushir
+    if (!isUserScrolling.current) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  }, [newResponse]);
+
+    return () => {
+      chatContainer.removeEventListener("scroll", handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [chatHistory, displayedResponse, streamingResponse, showGemini, geminiResponse]);
 
   const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name) return;
+    if (!isAuthenticated || !user?.full_name || conversations.length) return;
 
     try {
       setLoading(true);
@@ -385,7 +370,7 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId) {
+    if (!isAuthenticated || !user?.full_name || !roomId || chatHistory.length) {
       return;
     }
 
@@ -436,8 +421,8 @@ function Dashboard() {
     }
   };
 
-  const createChatRoom = async () => {
-    if (!isAuthenticated || !user?.full_name) {
+  const createChatRoom = async (firstMessage) => {
+    if (!isAuthenticated || !user?.full_name || loading) {
       return null;
     }
 
@@ -452,7 +437,7 @@ function Dashboard() {
 
       const response = await axios.post(
         `${API_BASE_URL}/chat/room/create`,
-        { user_id: userId },
+        { user_id: userId, title: firstMessage?.substring(0, 50) || "New Chat" },
         {
           headers: {
             Authorization: `${token}`,
@@ -464,10 +449,6 @@ function Dashboard() {
       const newRoomId = response.data.ID;
       console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
-      setChatHistory([]);
-      setDisplayedResponse({});
-      setNewResponse(null);
-      setStreamingResponse("");
       return newRoomId;
     } catch (error) {
       console.error("Error creating chat room:", error);
@@ -502,8 +483,25 @@ function Dashboard() {
     });
   };
 
+  const handleNewChat = async () => {
+    if (!isAuthenticated || !user?.full_name) {
+      toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    navigate("/");
+    setChatHistory([]);
+    setDisplayedResponse({});
+    setNewResponse(null);
+    setStreamingResponse("");
+    setShowGemini(false);
+    setGeminiResponse(null);
+    setPendingChunks("");
+    if (geminiTimer) clearTimeout(geminiTimer);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  };
+
   const handleSend = async () => {
-    if (!message.trim()) {
+    if (!message.trim() || loading) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
@@ -520,16 +518,20 @@ function Dashboard() {
       return;
     }
 
-    if (loading) {
-      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
-      return;
-    }
-
     setLoading(true);
+
+    if (geminiTimer) {
+      clearTimeout(geminiTimer);
+      setGeminiTimer(null);
+    }
+    setShowGemini(false);
+    setGeminiResponse(null);
+    setPendingChunks("");
+    setStreamingResponse("");
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
-      currentChatRoomId = await createChatRoom();
+      currentChatRoomId = await createChatRoom(message);
       if (!currentChatRoomId) {
         await fetchChatRooms();
         if (conversations.length > 0) {
@@ -570,7 +572,6 @@ function Dashboard() {
       isLoading: true,
     };
     setChatHistory((prev) => [...prev, newMessage]);
-    setStreamingResponse("");
     setMessage("");
 
     try {
@@ -641,14 +642,18 @@ function Dashboard() {
   };
 
   const renderAssistantResponse = (responseText) => {
-    if (!responseText) return null;
+    if (!responseText || typeof responseText !== 'string') return null;
 
-    const lines = responseText.split(/\n+/).filter((line) => line.trim());
+    const lines = responseText.split(/\n+/).filter((line) => line.trim() !== '');
 
     return lines.map((line, index) => {
       let formattedLine = line;
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      formattedLine = formattedLine.replace(/`(.*?)`/g, "<code>$1</code>");
+      formattedLine = formattedLine.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+      formattedLine = formattedLine.replace(/^### (.*)$/gm, '<h2>$1</h2>');
+      formattedLine = formattedLine.replace(/^---$/gm, '<hr />');
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
@@ -660,12 +665,20 @@ function Dashboard() {
       }
 
       return (
-        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2">
+        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2 break-words max-w-prose whitespace-pre-wrap">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
       );
     });
   };
+
+  const hasAnyResponse = chatHistory.some(chat => chat.finalResponse || displayedResponse[chat.request]);
+
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
+
+  const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
 
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
@@ -680,9 +693,8 @@ function Dashboard() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
           <div className="hidden md:block">
             <Header
@@ -693,20 +705,42 @@ function Dashboard() {
               toggleHistoryPanel={toggleHistoryPanel}
             />
           </div>
-          <div className="h-full w-full flex">
-            <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
-            <SidebarContent
-              activeTab={activeTab}
-              setIsSidebarOpen={setIsSidebarOpen}
-              fetchChatHistory={fetchChatHistory}
-              chatRoomId={chatId}
-              conversations={conversations}
-              createChatRoom={createChatRoom}
-              loading={loading}
-              isAuthenticated={isAuthenticated}
-              user={user}
-              navigate={navigate}
-            />
+          <div className="flex flex-col h-[100%]">
+            <div className="h-[80%] sm:h-[100%] w-full flex">
+              <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
+              <SidebarContent
+                activeTab={activeTab}
+                setIsSidebarOpen={setIsSidebarOpen}
+                fetchChatHistory={fetchChatHistory}
+                chatRoomId={chatId}
+                conversations={conversations}
+                createChatRoom={createChatRoom}
+                loading={loading}
+                isAuthenticated={isAuthenticated}
+                user={user}
+                navigate={navigate}
+                handleNewChat={handleNewChat}
+              />
+            </div>
+
+            {isAuthenticated && (
+              <div
+                className="flex items-center justify-between p-2 bg-black/85 border-t border-gray-800 cursor-pointer"
+                onClick={handleProfileClick}
+              >
+                <div className="flex items-center">
+                  <div className="w-8 h-8 mr-2">
+                    <img
+                      src="/src/assets/profile.png"
+                      alt="Profile"
+                      className="w-full h-full rounded-full object-cover bg-white"
+                    />
+                  </div>
+                  <span className="text-white text-sm font-medium">{storedFullName}</span>
+                  <span className="ml-1 text-blue-400 text-xs">Check</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex-1 flex flex-col">
@@ -726,19 +760,36 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated && chatId && chatHistory.map((chat, index) => (
-              <ChatMessage
-                key={index}
-                message={chat.request}
-                initialAssistantMessage={chat.initialAssistantMessage}
-                finalResponse={renderAssistantResponse(
-                  displayedResponse[chat.request] || chat.finalResponse
-                )}
-                isLoading={chat.isLoading}
-                isMobile={isMobile}
-              />
-            ))}
+            {isAuthenticated && !chatId && !hasAnyResponse && (
+              <div className="mb-[60px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
+                Premium
+              </div>
+            )}
+            {isAuthenticated && chatId && chatHistory.map((chat, index) => {
+              const isLastMessage = index === chatHistory.length - 1;
+              const responseText = displayedResponse[chat.request] || chat.finalResponse || streamingResponse;
+              const finalResponse = isLastMessage && showGemini
+                ? renderAssistantResponse(geminiResponse)
+                : renderAssistantResponse(responseText);
+              const isLoading = isLastMessage && chat.isLoading && !showGemini;
+
+              return (
+                <ChatMessage
+                  key={index}
+                  message={chat.request}
+                  initialAssistantMessage={chat.initialAssistantMessage}
+                  finalResponse={finalResponse}
+                  isLoading={isLoading}
+                  isMobile={isMobile}
+                />
+              );
+            })}
           </div>
+          {hasAnyResponse && (
+            <div className="mb-[80px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
+              IMZO can make mistakes. Please double check responses.
+            </div>
+          )}
           <ChatInput
             message={message}
             setMessage={setMessage}

@@ -42,6 +42,7 @@ function Dashboard() {
   const reconnectDelay = 3000;
   const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
+  const isUserScrolling = useRef(false);
   const navigate = useNavigate();
   const { chatId } = useParams();
   const location = useLocation();
@@ -297,10 +298,26 @@ function Dashboard() {
   }, [isAuthenticated, user, chatId]);
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
+
+    const handleScroll = () => {
+      const isAtBottom =
+        chatContainer.scrollHeight - chatContainer.scrollTop <=
+        chatContainer.clientHeight + 50;
+      isUserScrolling.current = !isAtBottom;
+    };
+
+    chatContainer.addEventListener("scroll", handleScroll);
+
+    if (!isUserScrolling.current) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  }, [chatHistory, displayedResponse, streamingResponse]);
+
+    return () => {
+      chatContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, [chatHistory, displayedResponse, streamingResponse, showGemini]);
 
   useEffect(() => {
     if (newResponse?.request && newResponse?.response) {
@@ -573,6 +590,33 @@ function Dashboard() {
   const handleProfileClick = () => {
     navigate("/profile");
   };
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
+
+    let scrollTimeout;
+
+    const handleScroll = () => {
+      const isAtBottom =
+        chatContainer.scrollHeight - chatContainer.scrollTop <=
+        chatContainer.clientHeight + 50;
+
+      isUserScrolling.current = !isAtBottom;
+
+      // Agar foydalanuvchi scroll qilayotgan bo'lsa, 2 soniya ichida harakat bo'lmasa avtomatik scrollni qaytar
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        isUserScrolling.current = false;
+      }, 2000);
+    };
+
+    chatContainer.addEventListener("scroll", handleScroll);
+
+    return () => {
+      chatContainer.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [chatHistory, streamingResponse, displayedResponse]);
   const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
   const handleNameModalOk = async () => {
     if (!fullName.trim()) {
@@ -746,11 +790,11 @@ function Dashboard() {
             )}
             {isAuthenticated && chatId && chatHistory.map((chat, index) => {
               const isLastMessage = index === chatHistory.length - 1;
-              const responseText = displayedResponse[chat.request] || chat.finalResponse || streamingResponse;
-              const finalResponse = isLastMessage && showGemini
-                ? renderAssistantResponse(geminiResponse)
-                : renderAssistantResponse(responseText);
-              const isLoading = isLastMessage && chat.isLoading && !showGemini;
+              const responseText = displayedResponse[chat.request] || chat.finalResponse;
+              const finalResponseText = isLastMessage ? (responseText || streamingResponse) : responseText;
+
+              const finalResponse = renderAssistantResponse(finalResponseText);
+              const isLoading = isLastMessage && chat.isLoading;
 
               return (
                 <ChatMessage
