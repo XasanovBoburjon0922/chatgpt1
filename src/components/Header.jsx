@@ -121,7 +121,14 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
         <span className="hidden lg:inline text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
       </div>
       
-      <div className="flex items-center space-x-2 lg:space-x-4">
+        <button
+          onClick={toggleHistoryPanel}
+          className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         
         {isAuthenticated && (
           <div className="relative">
