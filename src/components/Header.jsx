@@ -121,6 +121,7 @@ const Header = ({ isAuthenticated, navigate, changeLanguage, toggleSidebar, togg
         <span className="hidden lg:inline text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">v1.20</span>
       </div>
       
+      <div className="flex items-center space-x-2 lg:space-x-4">
         <button
           onClick={toggleHistoryPanel}
           className="lg:hidden text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
