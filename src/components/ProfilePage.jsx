@@ -5,19 +5,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
-import axios from "axios";
 
 const API_BASE_URL = "https://imzo-ai.uzjoylar.uz";
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
-  const { user, isAuthenticated, login, logout } = useAuth(); // logout qo'shildi
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [showLangModal, setShowLangModal] = useState(false);
   const [selectedLang, setSelectedLang] = useState("uz");
@@ -36,7 +32,6 @@ export default function ProfilePage() {
     }
 
     if (user) {
-      setFullName(user.full_name || "");
       setPhoneNumber(user.phone_number || "");
     }
   }, [user, isAuthenticated, navigate]);
@@ -55,48 +50,6 @@ export default function ProfilePage() {
     setSelectedLang(lng);
     setShowLangModal(false);
     toast.success(t("languageChanged"), { theme: "dark", position: "top-center" });
-  };
-
-  const handleSave = async () => {
-    if (!fullName.trim()) {
-      toast.error(t("nameRequired"), { theme: "dark" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const userId = localStorage.getItem("user_id");
-
-      await axios.post(
-        `${API_BASE_URL}/users/update?id=${userId}`,
-        {
-          full_name: fullName,
-          phone_number: phoneNumber,
-        },
-        {
-          headers: {
-            Authorization: `${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      login({ ...user, full_name: fullName, phone_number: phoneNumber }, { access_token: token });
-      localStorage.setItem("full_name", fullName);
-
-      toast.success(t("save"), { theme: "dark" });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error(t("nameUpdateError"), { theme: "dark" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleEdit = () => {
-    setIsEditing(!isEditing);
   };
 
   const getLangText = () => {
@@ -132,21 +85,11 @@ export default function ProfilePage() {
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-gray-700 rounded-full mr-3"></div>
                 <div>
-                  <p className="text-sm text-gray-400">Ism</p>
+                  <p className="text-sm text-gray-400">Telefon raqami</p>
+                  <p className="text-lg font-semibold">{phoneNumber || "+998 XX XXX XX XX"}</p>
                 </div>
               </div>
-              <span className="text-blue-400 text-bold text-[22px]">{fullName}</span>
             </div>
-
-            {isEditing && (
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="mt-3 bg-gray-800 text-white rounded-lg px-3 py-2 w-full text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ismingizni kiriting"
-              />
-            )}
           </div>
 
           {/* App Settings */}
@@ -174,33 +117,6 @@ export default function ProfilePage() {
               <span className="text-gray-400">Dark Mode</span>
             </div>
           </div>
-
-          {/* Edit / Save Buttons */}
-          {isEditing ? (
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={toggleEdit}
-                className="flex-1 bg-gray-700 text-gray-300 py-3 rounded-xl font-medium"
-                disabled={loading}
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex-1 bg-white text-black py-3 rounded-xl font-medium"
-                disabled={loading}
-              >
-                {loading ? "Saqlanmoqda..." : "Saqlash"}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={toggleEdit}
-              className="mt-6 w-full bg-white text-black py-3 rounded-xl font-medium"
-            >
-              Tahrirlash
-            </button>
-          )}
         </div>
 
         {/* Language Modal */}
@@ -270,22 +186,11 @@ export default function ProfilePage() {
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-700">
             <div className="flex items-center gap-6">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-3xl font-bold">
-                {fullName.charAt(0).toUpperCase() || "U"}
+                U
               </div>
               <div className="flex-1">
-                <p className="text-sm text-gray-400">Foydalanuvchi nomi</p>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="bg-gray-700 text-white rounded-xl px-4 py-2 w-full mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ismingizni kiriting"
-                  />
-                ) : (
-                  <h2 className="text-2xl font-semibold">{fullName || "Foydalanuvchi"}</h2>
-                )}
-                <p className="text-gray-400 mt-1">{phoneNumber || "+998 XX XXX XX XX"}</p>
+                <p className="text-sm text-gray-400">Telefon raqami</p>
+                <p className="text-2xl font-semibold">{phoneNumber || "+998 XX XXX XX XX"}</p>
               </div>
             </div>
           </div>
@@ -326,35 +231,6 @@ export default function ProfilePage() {
                 <span className="text-gray-500">&gt;</span>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={toggleEdit}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl font-medium transition"
-                  disabled={loading}
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium transition hover:from-blue-600 hover:to-purple-700"
-                  disabled={loading}
-                >
-                  {loading ? "Saqlanmoqda..." : "Saqlash"}
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={toggleEdit}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium transition hover:from-blue-600 hover:to-purple-700"
-              >
-                Tahrirlash
-              </button>
-            )}
           </div>
         </div>
       </div>

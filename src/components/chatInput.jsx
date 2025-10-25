@@ -9,7 +9,6 @@ const ChatInput = ({
   loading,
   handleSend,
   handleFileUpload,
-  setIsModalVisible,
   isMobile,
 }) => {
   const { t } = useTranslation();
@@ -19,10 +18,6 @@ const ChatInput = ({
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isAuthenticated || !user?.full_name) {
-        setIsModalVisible(true);
-        return;
-      }
       if (selectedFile) {
         handleFileUpload(selectedFile, message);
         setSelectedFile(null);
@@ -57,10 +52,6 @@ const ChatInput = ({
   };
 
   const handleSubmit = () => {
-    if (!isAuthenticated || !user?.full_name) {
-      setIsModalVisible(true);
-      return;
-    }
     if (selectedFile) {
       handleFileUpload(selectedFile, message);
       setSelectedFile(null);
@@ -196,7 +187,6 @@ const ChatInput = ({
       {!isAuthenticated && (
         <div className="text-center mt-2">
           <button
-            onClick={() => setIsModalVisible(true)}
             className="text-white text-xs hover:text-gray-400 transition-colors"
           >
             {t("loginToChat")}

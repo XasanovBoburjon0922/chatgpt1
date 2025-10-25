@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/authContext";
-import axios from "axios";
+import { verifyApi } from "../api/api";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -11,15 +11,28 @@ function VerifyPage() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isVerified, setIsVerified] = useState(false); // Block re-verification
-  const [fullName, setFullName] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
 
-  const phoneNumberWithFormat = location.state?.phone || "+998 94 708 09 22";
-  const phoneNumber = `+${phoneNumberWithFormat.replace(/[^\d]/g, "")}`;
+  const phoneNumberWithFormat = location.state?.phone;
+  const phoneNumber = phoneNumberWithFormat
+    ? `+${phoneNumberWithFormat.replace(/[^\d]/g, "")}`
+    : null;
+
+  // Redirect if already authenticated or no phone number
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    } else if (!phoneNumberWithFormat) {
+      toast.error("Telefon raqami topilmadi. Iltimos, qayta login qiling.", {
+        theme: "dark",
+        position: "top-center",
+      });
+      navigate("/login");
+    }
+  }, [isAuthenticated, phoneNumberWithFormat, navigate]);
 
   useEffect(() => {
     let interval;
@@ -40,40 +53,36 @@ function VerifyPage() {
     setIsVerifying(true);
 
     try {
-      const response = await axios.post("https://imzo-ai.uzjoylar.uz/users/verify-code", {
+      const response = await verifyApi.post("/users/verify-code", {
         code: parseInt(enteredCode),
         phone_number: phoneNumber,
       });
 
-      if (response.status === 200) {
-        if (response.data && response.data.token) {
-          localStorage.setItem("user_id", response.data.userInfo.id);
-          localStorage.setItem("access_token", response.data.token);
-          setIsVerified(true); // Block further verifications
-
-          if (!response.data.userInfo.full_name) {
-            setIsModalVisible(true);
-          } else {
-            login(response.data.userInfo, response.data.token);
-            toast.success("Muvaffaqiyatli kirildi!");
-            navigate("/");
-          }
-        } else if (response.data.valid === false) {
-          toast.error("Kod noto'g'ri yoki muddati o'tgan!");
-          setCode(["", "", "", "", "", ""]);
-        }
+      if (response.status === 200 && response.data.message === "Verification successful") {
+        setIsVerified(true);
+        login({ phone_number: phoneNumber });
+        toast.success("Muvaffaqiyatli kirildi!", { theme: "dark", position: "top-center" });
+        navigate("/");
+      } else {
+        throw new Error("Noma'lum javob");
       }
     } catch (error) {
-      console.error("Verification error:", error);
-      if (error.response?.status === 400) {
-        toast.error("Kod noto'g'ri yoki muddati o'tgan!");
-      } else if (error.response?.status === 429) {
-        toast.error("Juda ko'p urinish. Biroz kuting.");
-      } else if (error.response?.status >= 500) {
-        toast.error("Server xatoligi. Keyinroq urinib ko'ring.");
-      } else {
-        toast.error("Internet aloqasini tekshiring.");
+      console.error("Verification error:", error, error.response?.data);
+      let errorMessage = "Internet aloqasini tekshiring.";
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = "Kod noto'g'ri yoki muddati o'tgan!";
+        } else if (error.response.status === 429) {
+          errorMessage = "Juda ko'p urinish. Biroz kuting.";
+        } else if (error.response.status >= 500) {
+          errorMessage = "Server xatoligi. Keyinroq urinib ko'ring.";
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        errorMessage = "Server bilan aloqa yo'q. Iltimos, internetni tekshiring.";
       }
+      toast.error(errorMessage, { theme: "dark", position: "top-center" });
       setCode(["", "", "", "", "", ""]);
     } finally {
       setIsVerifying(false);
@@ -88,7 +97,7 @@ function VerifyPage() {
   }, [code, isVerifying, isVerified, handleVerify]);
 
   const handleChange = (index, value, event) => {
-    if (isVerifying || isModalVisible) return; // Block during verify or modal
+    if (isVerifying) return;
 
     if (event.type === "paste") {
       const pastedData = event.clipboardData.getData("text").replace(/\D/g, "");
@@ -96,7 +105,7 @@ function VerifyPage() {
         setCode(pastedData.split(""));
         document.getElementById(`code-input-5`)?.focus();
       } else {
-        toast.error("Iltimos, 6 raqamli kodni kiriting!");
+        toast.error("Iltimos, 6 raqamli kodni kiriting!", { theme: "dark", position: "top-center" });
       }
       return;
     }
@@ -111,7 +120,7 @@ function VerifyPage() {
   };
 
   const handleKeyDown = (index, e) => {
-    if (isVerifying || isModalVisible) return; // Block during verify or modal
+    if (isVerifying) return;
 
     if (e.key === "Backspace" && !code[index] && index > 0) {
       document.getElementById(`code-input-${index - 1}`)?.focus();
@@ -119,7 +128,7 @@ function VerifyPage() {
   };
 
   const handlePaste = (event, index) => {
-    if (isVerifying || isModalVisible) return; // Block during verify or modal
+    if (isVerifying) return;
     event.preventDefault();
     handleChange(index, event.clipboardData.getData("text"), event);
   };
@@ -133,54 +142,18 @@ function VerifyPage() {
     try {
       setTimer(60);
       setCode(["", "", "", "", "", ""]);
-      // await axios.post("https://imzo-ai.uzjoylar.uz/users/resend-code", {
-      //   phone_number: phoneNumber,
-      // });
-      toast.success("Kod qayta yuborildi");
+      await verifyApi.post("/users/resend-code", {
+        phone_number: phoneNumber,
+      });
+      toast.success("Kod qayta yuborildi", { theme: "dark", position: "top-center" });
     } catch (error) {
-      console.error("Resend code error:", error);
-      toast.error("Kod qayta yuborishda xatolik");
+      console.error("Resend code error:", error, error.response?.data);
+      let errorMessage = "Kod qayta yuborishda xatolik";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      toast.error(errorMessage, { theme: "dark", position: "top-center" });
     }
-  };
-
-  const handleModalOk = async () => {
-    if (!fullName.trim()) {
-      toast.error("Iltimos, ismingizni kiriting!");
-      return;
-    }
-    try {
-      const userId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("access_token");
-      await axios.put(
-        `https://imzo-ai.uzjoylar.uz/users/update?id=${userId}`,
-        {
-          full_name: fullName,
-          phone_number: phoneNumber,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      toast.success("Ism muvaffaqiyatli saqlandi!");
-      setIsModalVisible(false);
-      setFullName("");
-      login({ id: userId, full_name: fullName, phone_number: phoneNumber }, token);
-      navigate("/");
-    } catch (error) {
-      console.error("Error updating full name:", error);
-      toast.error("Ismni saqlashda xatolik yuz berdi!");
-    }
-  };
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
-    setFullName("");
-    setIsVerified(false); // Allow retry if canceled
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("access_token");
-    navigate("/login");
   };
 
   const formatTime = (seconds) => {
@@ -188,6 +161,8 @@ function VerifyPage() {
     const secs = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (!phoneNumberWithFormat) return null;
 
   return (
     <div className="min-h-screen bg-black/85 flex items-center justify-center px-4">
@@ -197,7 +172,7 @@ function VerifyPage() {
         <button
           onClick={() => navigate("/login")}
           className="flex items-center text-gray-400 hover:text-white mb-8 transition-colors duration-200"
-          disabled={isVerifying || isModalVisible}
+          disabled={isVerifying}
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -231,14 +206,14 @@ function VerifyPage() {
                 onPaste={(e) => handlePaste(e, index)}
                 maxLength={1}
                 className="w-12 h-14 bg-gray-900/50 border border-gray-600 rounded-xl text-white text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                disabled={isVerifying || isModalVisible}
+                disabled={isVerifying}
               />
             ))}
           </div>
 
           <button
             onClick={handleTelegramRedirect}
-            disabled={isVerifying || isModalVisible}
+            disabled={isVerifying}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-all duration-200 mb-6"
           >
             Telegram orqali yuborish
@@ -266,35 +241,6 @@ function VerifyPage() {
             </div>
           )}
         </div>
-
-        {isModalVisible && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 w-full max-w-sm">
-              <h3 className="text-xl font-bold text-white mb-4">Ismingizni kiriting</h3>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ism va familiyangizni kiriting"
-                className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={handleModalCancel}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 rounded-xl transition-all duration-200"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={handleModalOk}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200"
-                >
-                  Saqlash
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

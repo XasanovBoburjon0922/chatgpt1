@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
 import { toast, ToastContainer } from "react-toastify";
@@ -42,18 +42,22 @@ function Dashboard() {
   const reconnectDelay = 3000;
   const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
-  const isUserScrolling = useRef(false);
   const navigate = useNavigate();
   const { chatId } = useParams();
-
-  const [geminiResponse, setGeminiResponse] = useState(null);
+  const location = useLocation();
   const [showGemini, setShowGemini] = useState(false);
-  const [geminiTimer, setGeminiTimer] = useState(null);
-  const [pendingChunks, setPendingChunks] = useState("");
+
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
+  useEffect(() => {
+    if (location.pathname.startsWith("/categories")) {
+      setActiveTab("categories");
+    } else {
+      setActiveTab("history");
+    }
+  }, [location.pathname]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -127,7 +131,6 @@ function Dashboard() {
       if (reconnectAttempts < maxReconnectAttempts) {
         setTimeout(() => {
           setReconnectAttempts((prev) => prev + 1);
-          console.log(`Reconnecting WebSocket, attempt ${reconnectAttempts + 1}`);
           connectWebSocket(roomId);
         }, reconnectDelay);
       } else {
@@ -145,23 +148,23 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && chatId && !ws) {
+    if (isAuthenticated && user?.full_name && chatId) {
       connectWebSocket(chatId);
+      return () => {
+        if (ws) {
+          ws.close();
+          setWs(null);
+          setIsConnected(false);
+        }
+      };
     }
-    return () => {
-      if (ws) {
-        ws.close();
-        setWs(null);
-        setIsConnected(false);
-      }
-      if (geminiTimer) {
-        clearTimeout(geminiTimer);
-      }
-    };
   }, [isAuthenticated, user, chatId]);
 
   const handleFileUpload = async (file, question) => {
-    if (!file || !question || loading) return;
+    if (!file || !question) {
+      toast.error(t("fileAndQuestionRequired"), { theme: "dark", position: "top-center" });
+      return;
+    }
 
     if (!isAuthenticated || !user?.full_name) {
       navigate("/login");
@@ -177,7 +180,6 @@ function Dashboard() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -208,7 +210,7 @@ function Dashboard() {
               : item
           )
         );
-        setLoading(false);
+        setNewResponse({ request: question, response: analysisData.responce });
         toast.success(t("submissionSuccessful"), { theme: "dark", position: "top-center" });
       }
     } catch (err) {
@@ -221,6 +223,7 @@ function Dashboard() {
             : item
         )
       );
+    } finally {
       setLoading(false);
     }
   };
@@ -230,7 +233,6 @@ function Dashboard() {
     const delay = 4000;
     const token = localStorage.getItem("access_token");
     if (!token) {
-      console.error("Access token not found");
       navigate("/login");
       throw new Error("Access token not found");
     }
@@ -244,16 +246,10 @@ function Dashboard() {
           },
         });
 
-        if (response.status === 200) {
-          if (response.data.responce && response.data.responce.trim() !== "") {
-            return response.data;
-          }
-          if (response.data.status === "completed") {
-            return response.data;
-          }
+        if (response.status === 200 && response.data.responce && response.data.responce.trim() !== "") {
+          return response.data;
         }
       } catch (error) {
-        console.error("Polling error:", error);
         if (error.response?.status === 401) {
           navigate("/login");
           throw error;
@@ -285,50 +281,63 @@ function Dashboard() {
     }
   }, [isAuthenticated, user, pendingMessage]);
 
+  // Chat tarixi va suhbatlar yuklash
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && !conversations.length) {
+    if (isAuthenticated && user?.full_name) {
       fetchChatRooms();
-    }
-    if (chatId && !chatHistory.length) {
-      fetchChatHistory(chatId);
-    } else if (!chatId) {
-      setChatHistory([]);
-      setDisplayedResponse({});
-      setNewResponse(null);
-      setStreamingResponse("");
+      if (chatId) {
+        fetchChatHistory(chatId);
+      } else {
+        setChatHistory([]);
+        setDisplayedResponse({});
+        setNewResponse(null);
+        setStreamingResponse("");
+      }
     }
   }, [isAuthenticated, user, chatId]);
 
   useEffect(() => {
-    const chatContainer = chatContainerRef.current;
-    if (!chatContainer) return;
-
-    const handleScroll = () => {
-      const isAtBottom =
-        chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 50;
-      isUserScrolling.current = !isAtBottom;
-    };
-
-    chatContainer.addEventListener("scroll", handleScroll);
-
-    if (!isUserScrolling.current) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
+  }, [chatHistory, displayedResponse, streamingResponse]);
 
-    return () => {
-      chatContainer.removeEventListener("scroll", handleScroll);
-    };
-  }, [chatHistory, displayedResponse, streamingResponse, showGemini, geminiResponse]);
+  useEffect(() => {
+    if (newResponse?.request && newResponse?.response) {
+      let currentText = "";
+      const fullText = newResponse.response;
+      const request = newResponse.request;
+      let index = 0;
+
+      const type = () => {
+        if (index < fullText.length) {
+          const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
+          currentText += fullText.slice(index, index + step);
+          setDisplayedResponse((prev) => ({ ...prev, [request]: currentText }));
+          index += step;
+          setTimeout(type, 50);
+        } else {
+          setChatHistory((prev) =>
+            prev.map((item) =>
+              item.request === request
+                ? { ...item, finalResponse: fullText, isLoading: false }
+                : item
+            )
+          );
+          setNewResponse(null);
+        }
+      };
+      type();
+    }
+  }, [newResponse]);
 
   const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name || conversations.length) return;
+    if (!isAuthenticated || !user?.full_name) return;
 
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -341,7 +350,7 @@ function Dashboard() {
       });
 
       const { chat_rooms } = response.data;
-      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title })));
+      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title, created_at: room.created_at })));
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
       if (error.response?.status === 401) {
@@ -355,15 +364,12 @@ function Dashboard() {
   };
 
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId || chatHistory.length) {
-      return;
-    }
+    if (!isAuthenticated || !user?.full_name || !roomId) return;
 
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -386,9 +392,7 @@ function Dashboard() {
       setChatHistory(newChatHistory);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
-          if (chat.response) {
-            acc[chat.request] = chat.response;
-          }
+          if (chat.response) acc[chat.request] = chat.response;
           return acc;
         }, {})
       );
@@ -407,15 +411,12 @@ function Dashboard() {
   };
 
   const createChatRoom = async (firstMessage) => {
-    if (!isAuthenticated || !user?.full_name || loading) {
-      return null;
-    }
+    if (!isAuthenticated || !user?.full_name) return null;
 
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return null;
       }
@@ -432,7 +433,6 @@ function Dashboard() {
       );
 
       const newRoomId = response.data.ID;
-      console.log("Created new chat room with ID:", newRoomId);
       await fetchChatRooms();
       return newRoomId;
     } catch (error) {
@@ -478,15 +478,11 @@ function Dashboard() {
     setDisplayedResponse({});
     setNewResponse(null);
     setStreamingResponse("");
-    setShowGemini(false);
-    setGeminiResponse(null);
-    setPendingChunks("");
-    if (geminiTimer) clearTimeout(geminiTimer);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
   const handleSend = async () => {
-    if (!message.trim() || loading) {
+    if (!message.trim()) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
@@ -503,16 +499,12 @@ function Dashboard() {
       return;
     }
 
-    setLoading(true);
-
-    if (geminiTimer) {
-      clearTimeout(geminiTimer);
-      setGeminiTimer(null);
+    if (loading) {
+      toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
+      return;
     }
-    setShowGemini(false);
-    setGeminiResponse(null);
-    setPendingChunks("");
-    setStreamingResponse("");
+
+    setLoading(true);
 
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
@@ -521,7 +513,6 @@ function Dashboard() {
         await fetchChatRooms();
         if (conversations.length > 0) {
           currentChatRoomId = conversations[0].id;
-          console.log("Using first existing conversation ID:", currentChatRoomId);
         } else {
           toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
           setLoading(false);
@@ -543,7 +534,6 @@ function Dashboard() {
       try {
         await waitForWebSocketConnection(websocket, connectionTimeout);
       } catch (error) {
-        console.error("WebSocket connection failed:", error);
         toast.error(error.message || t("websocketNotConnected"), { theme: "dark", position: "top-center" });
         setLoading(false);
         return;
@@ -557,6 +547,7 @@ function Dashboard() {
       isLoading: true,
     };
     setChatHistory((prev) => [...prev, newMessage]);
+    setStreamingResponse("");
     setMessage("");
 
     try {
@@ -579,6 +570,10 @@ function Dashboard() {
     }
   };
 
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
+  const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
   const handleNameModalOk = async () => {
     if (!fullName.trim()) {
       toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
@@ -587,7 +582,6 @@ function Dashboard() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        console.error("Access token not found");
         navigate("/login");
         return;
       }
@@ -626,19 +620,25 @@ function Dashboard() {
     navigate("/login");
   };
 
-  const renderAssistantResponse = (responseText) => {
-    if (!responseText || typeof responseText !== 'string') return null;
+  // Chat tanlanganda chaqiriladigan funksiya
+  const handleConversationSelect = (convId) => {
+    navigate(`/c/${convId}`);
+    fetchChatHistory(convId);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  };
 
-    const lines = responseText.split(/\n+/).filter((line) => line.trim() !== '');
+  const renderAssistantResponse = (responseText) => {
+    if (!responseText) return null;
+
+    const lines = responseText.split(/\n+/).filter((line) => line.trim());
 
     return lines.map((line, index) => {
       let formattedLine = line;
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
-      formattedLine = formattedLine.replace(/`(.*?)`/g, "<code>$1</code>");
       formattedLine = formattedLine.replace(/^## (.*)$/gm, '<h2>$1</h2>');
       formattedLine = formattedLine.replace(/^### (.*)$/gm, '<h2>$1</h2>');
-      // Replace --- with <hr />
+      formattedLine = formattedLine.replace(/^#### (.*)$/gm, '<h2>$1</h2>');
       formattedLine = formattedLine.replace(/^---$/gm, '<hr />');
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
@@ -651,23 +651,12 @@ function Dashboard() {
       }
 
       return (
-        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2 break-words max-w-prose whitespace-pre-wrap">
+        <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
         </p>
       );
     });
   };
-
-  const hasAnyResponse = chatHistory.some(chat => chat.finalResponse || displayedResponse[chat.request]);
-
-  // Function to handle profile click (navigate to settings or open modal)
-  const handleProfileClick = () => {
-    // Replace with your logic (e.g., navigate to /settings or open a modal)
-    // navigate("/settings"); // Example navigation to settings page
-    console.error("navigate", error);
-  };
-
-  const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
 
   return (
     <div className="h-screen bg-black/85 flex flex-col text-white">
@@ -695,7 +684,7 @@ function Dashboard() {
             />
           </div>
           <div className="flex flex-col h-[100%]">
-            <div className="h-[80%] sm:h-[100%] w-full flex">
+            <div className="h-[80%] w-full flex">
               <SidebarIcons setActiveTab={setActiveTab} activeTab={activeTab} navigate={navigate} />
               <SidebarContent
                 activeTab={activeTab}
@@ -709,6 +698,7 @@ function Dashboard() {
                 user={user}
                 navigate={navigate}
                 handleNewChat={handleNewChat}
+                onConversationSelect={handleConversationSelect} // YANGI QATOR
               />
             </div>
 
@@ -732,9 +722,9 @@ function Dashboard() {
             )}
           </div>
         </div>
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col h-[90%]">
           <div
-            className="flex-1 overflow-y-auto p-4 lg:px-[100px] lg:py-6 chat-container"
+            className="flex-1 overflow-y-auto px-[10px] lg:px-[40px] chat-container"
             ref={chatContainerRef}
           >
             {!isAuthenticated && (
@@ -749,8 +739,8 @@ function Dashboard() {
                 <p className="text-gray-400 text-sm lg:text-base">{t("askanything")}</p>
               </div>
             )}
-            {isAuthenticated && !chatId && !hasAnyResponse && (
-              <div className="mb-[60px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
+            {isAuthenticated && !chatId && (
+              <div className="mb-[10px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
                 Premium
               </div>
             )}
@@ -774,11 +764,6 @@ function Dashboard() {
               );
             })}
           </div>
-          {hasAnyResponse && (
-            <div className="mb-[80px] rounded bg-[#2d2d2d] p-2 text-center text-gray-300 text-sm">
-              IMZO can make mistakes. Please double check responses.
-            </div>
-          )}
           <ChatInput
             message={message}
             setMessage={setMessage}
@@ -802,6 +787,7 @@ function Dashboard() {
           }}
         />
       )}
+      {/* Modal windows */}
       {isNameModalVisible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-black/85 rounded-2xl border border-gray-800 p-4 w-full max-w-xs lg:p-6 lg:max-w-sm">

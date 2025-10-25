@@ -1,7 +1,8 @@
+// src/components/Dashboard.jsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import { api, verifyApi } from "../api/api"; // Import the custom Axios instance
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
@@ -18,7 +19,7 @@ const WS_BASE_URL = "wss://imzo-ai.uzjoylar.uz/ws";
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
-  const { isAuthenticated, user, login } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
   const [chatHistory, setChatHistory] = useState([]);
@@ -26,9 +27,6 @@ function Dashboard() {
   const [newResponse, setNewResponse] = useState(null);
   const [displayedResponse, setDisplayedResponse] = useState({});
   const [streamingResponse, setStreamingResponse] = useState("");
-  const [userId] = useState(localStorage.getItem("user_id"));
-  const [isNameModalVisible, setIsNameModalVisible] = useState(false);
-  const [fullName, setFullName] = useState("");
   const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -48,10 +46,10 @@ function Dashboard() {
   const location = useLocation();
   const [showGemini, setShowGemini] = useState(false);
 
-
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
+
   useEffect(() => {
     if (location.pathname.startsWith("/categories")) {
       setActiveTab("categories");
@@ -70,7 +68,7 @@ function Dashboard() {
   };
 
   const connectWebSocket = (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId || reconnectAttempts >= maxReconnectAttempts) {
+    if (!isAuthenticated || !roomId || reconnectAttempts >= maxReconnectAttempts) {
       console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
       return null;
     }
@@ -95,7 +93,7 @@ function Dashboard() {
       try {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
-
+    
         if (data.type === "chunk" && data.data && typeof data.data === "string") {
           const chunkText = data.data;
           if (showGemini) {
@@ -106,6 +104,21 @@ function Dashboard() {
               prev.map((item, index) =>
                 index === prev.length - 1
                   ? { ...item, finalResponse: (item.finalResponse || "") + chunkText, isLoading: true }
+                  : item
+              )
+            );
+          }
+        } else if (data.type === "gemini" && data.response && typeof data.response === "string") {
+          // Handle gemini response
+          const geminiText = data.response;
+          if (showGemini) {
+            setPendingChunks((prev) => prev + geminiText);
+          } else {
+            setStreamingResponse((prev) => prev + geminiText);
+            setChatHistory((prev) =>
+              prev.map((item, index) =>
+                index === prev.length - 1
+                  ? { ...item, finalResponse: (item.finalResponse || "") + geminiText, isLoading: true }
                   : item
               )
             );
@@ -149,7 +162,7 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.full_name && chatId) {
+    if (isAuthenticated && chatId) {
       connectWebSocket(chatId);
       return () => {
         if (ws) {
@@ -159,7 +172,7 @@ function Dashboard() {
         }
       };
     }
-  }, [isAuthenticated, user, chatId]);
+  }, [isAuthenticated, chatId]);
 
   const handleFileUpload = async (file, question) => {
     if (!file || !question) {
@@ -167,7 +180,7 @@ function Dashboard() {
       return;
     }
 
-    if (!isAuthenticated || !user?.full_name) {
+    if (!isAuthenticated) {
       navigate("/login");
       return;
     }
@@ -179,16 +192,9 @@ function Dashboard() {
     formData.append("question", question);
 
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const response = await axios.post(`${API_BASE_URL}/get/pdf/analysis`, formData, {
+      const response = await api.post("/get/pdf/analysis", formData, {
         headers: {
           Accept: "application/json",
-          Authorization: `${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -232,17 +238,11 @@ function Dashboard() {
   const pollForAnalysisResponse = async (analysisId) => {
     const maxAttempts = 30;
     const delay = 4000;
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      navigate("/login");
-      throw new Error("Access token not found");
-    }
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await axios.get(`${API_BASE_URL}/get/pdf/analysis/${analysisId}`, {
+        const response = await api.get(`/get/pdf/analysis/${analysisId}`, {
           headers: {
-            Authorization: `${token}`,
             "Content-Type": "application/json",
           },
         });
@@ -272,19 +272,22 @@ function Dashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+   // Chat tanlanganda chaqiriladigan funksiya
+   const handleConversationSelect = (convId) => {
+    navigate(`/c/${convId}`);
+    fetchChatHistory(convId);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  };
   useEffect(() => {
-    if (isAuthenticated && user && !user.full_name) {
-      setIsNameModalVisible(true);
-    } else if (isAuthenticated && user?.full_name && pendingMessage) {
+    if (isAuthenticated && pendingMessage) {
       setMessage(pendingMessage);
       handleSend();
       setPendingMessage(null);
     }
-  }, [isAuthenticated, user, pendingMessage]);
+  }, [isAuthenticated, pendingMessage]);
 
-  // Chat tarixi va suhbatlar yuklash
   useEffect(() => {
-    if (isAuthenticated && user?.full_name) {
+    if (isAuthenticated) {
       fetchChatRooms();
       if (chatId) {
         fetchChatHistory(chatId);
@@ -295,7 +298,7 @@ function Dashboard() {
         setStreamingResponse("");
       }
     }
-  }, [isAuthenticated, user, chatId]);
+  }, [isAuthenticated, chatId]);
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -349,19 +352,12 @@ function Dashboard() {
   }, [newResponse]);
 
   const fetchChatRooms = async () => {
-    if (!isAuthenticated || !user?.full_name) return;
+    if (!isAuthenticated) return;
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const response = await axios.get(`${API_BASE_URL}/chat/user_id?id=${userId}`, {
+      const response = await api.get(`/chat/user_id`, {
         headers: {
-          Authorization: `${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -369,7 +365,7 @@ function Dashboard() {
       const { chat_rooms } = response.data;
       setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title, created_at: room.created_at })));
     } catch (error) {
-      console.error("Error fetching chat rooms:", error);
+      console.error("Error fetching chat rooms:", error, error.response?.data);
       if (error.response?.status === 401) {
         navigate("/login");
       } else {
@@ -379,21 +375,13 @@ function Dashboard() {
       setLoading(false);
     }
   };
-
   const fetchChatHistory = async (roomId) => {
-    if (!isAuthenticated || !user?.full_name || !roomId) return;
+    if (!isAuthenticated || !roomId) return;
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const response = await axios.get(`${API_BASE_URL}/chat/message?id=${roomId}`, {
+      const response = await api.get(`/chat/message?id=${roomId}`, {
         headers: {
-          Authorization: `${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -428,22 +416,15 @@ function Dashboard() {
   };
 
   const createChatRoom = async (firstMessage) => {
-    if (!isAuthenticated || !user?.full_name) return null;
+    if (!isAuthenticated) return null;
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return null;
-      }
-
-      const response = await axios.post(
-        `${API_BASE_URL}/chat/room/create`,
-        { user_id: userId, title: firstMessage?.substring(0, 50) || "New Chat" },
+      const response = await api.post(
+        "/chat/room/create",
+        { phone_number: user.phone_number, title: firstMessage?.substring(0, 50) || "New Chat" },
         {
           headers: {
-            Authorization: `${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -486,7 +467,7 @@ function Dashboard() {
   };
 
   const handleNewChat = async () => {
-    if (!isAuthenticated || !user?.full_name) {
+    if (!isAuthenticated) {
       toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
       return;
     }
@@ -506,12 +487,6 @@ function Dashboard() {
 
     if (!isAuthenticated) {
       setIsLoginModalVisible(true);
-      setPendingMessage(message);
-      return;
-    }
-
-    if (!user?.full_name) {
-      setIsNameModalVisible(true);
       setPendingMessage(message);
       return;
     }
@@ -590,6 +565,7 @@ function Dashboard() {
   const handleProfileClick = () => {
     navigate("/profile");
   };
+
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
     if (!chatContainer) return;
@@ -603,7 +579,6 @@ function Dashboard() {
 
       isUserScrolling.current = !isAtBottom;
 
-      // Agar foydalanuvchi scroll qilayotgan bo'lsa, 2 soniya ichida harakat bo'lmasa avtomatik scrollni qaytar
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         isUserScrolling.current = false;
@@ -617,59 +592,6 @@ function Dashboard() {
       clearTimeout(scrollTimeout);
     };
   }, [chatHistory, streamingResponse, displayedResponse]);
-  const storedFullName = localStorage.getItem("full_name") || user?.full_name || "User";
-  const handleNameModalOk = async () => {
-    if (!fullName.trim()) {
-      toast.error(t("nameRequired"), { theme: "dark", position: "top-center" });
-      return;
-    }
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      await axios.post(
-        `${API_BASE_URL}/users/update?id=${userId}`,
-        {
-          full_name: fullName,
-          phone_number: user.phone_number,
-        },
-        {
-          headers: {
-            Authorization: `${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      toast.success(t("save"), { theme: "dark", position: "top-center" });
-      setIsNameModalVisible(false);
-      login({ ...user, full_name: fullName }, localStorage.getItem("access_token"));
-      setFullName("");
-    } catch (error) {
-      console.error("Error updating full name:", error);
-      if (error.response?.status === 401) {
-        navigate("/login");
-      } else {
-        toast.error(t("nameUpdateError"), { theme: "dark", position: "top-center" });
-      }
-    }
-  };
-
-  const handleNameModalCancel = () => {
-    setIsNameModalVisible(false);
-    setFullName("");
-    navigate("/login");
-  };
-
-  // Chat tanlanganda chaqiriladigan funksiya
-  const handleConversationSelect = (convId) => {
-    navigate(`/c/${convId}`);
-    fetchChatHistory(convId);
-    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-  };
 
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
@@ -759,7 +681,7 @@ function Dashboard() {
                       className="w-full h-full rounded-full object-cover bg-white"
                     />
                   </div>
-                  <span className="text-white text-sm font-medium">{storedFullName}</span>
+                  <span className="text-white text-sm font-medium">User</span>
                   <span className="ml-1 text-blue-400 text-xs">Check</span>
                 </div>
               </div>
@@ -816,7 +738,6 @@ function Dashboard() {
             loading={loading}
             handleSend={handleSend}
             handleFileUpload={handleFileUpload}
-            setIsModalVisible={setIsLoginModalVisible}
             isMobile={isMobile}
             isWebSocketConnected={isConnected}
           />
@@ -831,36 +752,7 @@ function Dashboard() {
           }}
         />
       )}
-      {/* Modal windows */}
-      {isNameModalVisible && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-black/85 rounded-2xl border border-gray-800 p-4 w-full max-w-xs lg:p-6 lg:max-w-sm">
-            <h3 className="text-lg font-bold mb-3 lg:text-xl lg:mb-4">{t("enterName")}</h3>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder={t("enterName")}
-              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white mb-3 text-sm lg:px-4 lg:py-3 lg:mb-4"
-            />
-            <div className="flex gap-2 lg:gap-3">
-              <button
-                onClick={handleNameModalCancel}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 rounded-xl transition-all text-sm lg:py-3"
-              >
-                {t("cancel")}
-              </button>
-              <button
-                onClick={handleNameModalOk}
-                className="flex-1 bg-white text-black font-medium py-2 rounded-xl transition-all hover:bg-gray-200 text-sm lg:py-3"
-              >
-                {t("save")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {isLoginModalVisible && (
+      {!isAuthenticated && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-black/85 rounded-2xl border border-gray-700 p-4 w-full max-w-xs lg:p-6 lg:max-w-md text-center">
             <div className="flex justify-center mb-3 lg:mb-4">
