@@ -1,8 +1,6 @@
-// src/components/Dashboard.jsx
 "use client";
-
 import { useState, useEffect, useRef } from "react";
-import { api, verifyApi } from "../api/api"; // Import the custom Axios instance
+import { api, verifyApi } from "../api/api";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/authContext";
@@ -36,10 +34,16 @@ function Dashboard() {
   const [ws, setWs] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportChatHistory, setSupportChatHistory] = useState([]);
+  const [userId, setUserId] = useState(null);
+
   const maxReconnectAttempts = 5;
   const reconnectDelay = 3000;
   const connectionTimeout = 10000;
   const chatContainerRef = useRef(null);
+  const supportChatContainerRef = useRef(null);
   const isUserScrolling = useRef(false);
   const navigate = useNavigate();
   const { chatId } = useParams();
@@ -49,6 +53,64 @@ function Dashboard() {
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
+
+  // Fetch user_id from /users/me
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const response = await api.get("/users/me", {
+          headers: { "Content-Type": "application/json" },
+        });
+        if (response.status === 200) {
+          setUserId(response.data.id);
+        }
+      } catch (error) {
+        console.error("Error fetching user ID:", error);
+        if (error.response?.status === 401) {
+          navigate("/login");
+        } else {
+          toast.error(t("failedToFetchUserId"), { theme: "dark", position: "top-center" });
+        }
+      }
+    };
+    fetchUserId();
+  }, [isAuthenticated, navigate, t]);
+
+  // Fetch support chat history when modal opens
+  useEffect(() => {
+    const fetchSupportChatHistory = async () => {
+      if (!isAuthenticated || !userId || !isSupportModalOpen) return;
+      try {
+        setLoading(true);
+        const response = await api.get(`/support/chat?id=${userId}`, {
+          headers: { "Content-Type": "application/json" },
+        });
+        if (response.status === 200) {
+          const messages = response.data || [];
+          setSupportChatHistory(
+            messages.map((msg) => ({
+              id: msg.id,
+              user_id: msg.user_id,
+              user_message: msg.user_message,
+              support_message: msg.support_message,
+              created_at: msg.created_at,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching support chat history:", error);
+        if (error.response?.status === 401) {
+          navigate("/login");
+        } else {
+          toast.error(t("failedToFetchSupportHistory"), { theme: "dark", position: "top-center" });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSupportChatHistory();
+  }, [isSupportModalOpen, isAuthenticated, userId, navigate, t]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/categories")) {
@@ -72,13 +134,11 @@ function Dashboard() {
       console.error("Cannot connect WebSocket: invalid parameters or max reconnect attempts reached");
       return null;
     }
-
     if (ws) {
       ws.close();
       setWs(null);
       setIsConnected(false);
     }
-
     const wsUrl = `${WS_BASE_URL}/${roomId}`;
     const websocket = new WebSocket(wsUrl);
     setWs(websocket);
@@ -93,7 +153,6 @@ function Dashboard() {
       try {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
-    
         if (data.type === "chunk" && data.data && typeof data.data === "string") {
           const chunkText = data.data;
           if (showGemini) {
@@ -109,7 +168,6 @@ function Dashboard() {
             );
           }
         } else if (data.type === "gemini" && data.response && typeof data.response === "string") {
-          // Handle gemini response
           const geminiText = data.response;
           if (showGemini) {
             setPendingChunks((prev) => prev + geminiText);
@@ -127,9 +185,7 @@ function Dashboard() {
           setLoading(false);
           setChatHistory((prev) =>
             prev.map((item, index) =>
-              index === prev.length - 1
-                ? { ...item, isLoading: false }
-                : item
+              index === prev.length - 1 ? { ...item, isLoading: false } : item
             )
           );
         }
@@ -179,26 +235,18 @@ function Dashboard() {
       toast.error(t("fileAndQuestionRequired"), { theme: "dark", position: "top-center" });
       return;
     }
-
     if (!isAuthenticated) {
       navigate("/login");
       return;
     }
-
     setLoading(true);
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("question", question);
-
     try {
       const response = await api.post("/get/pdf/analysis", formData, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { Accept: "application/json", "Content-Type": "multipart/form-data" },
       });
-
       if (response.status === 200) {
         const { id } = response.data;
         const newMessage = {
@@ -208,7 +256,6 @@ function Dashboard() {
           isLoading: true,
         };
         setChatHistory((prev) => [...prev, newMessage]);
-
         const analysisData = await pollForAnalysisResponse(id);
         setChatHistory((prev) =>
           prev.map((item, index) =>
@@ -238,15 +285,11 @@ function Dashboard() {
   const pollForAnalysisResponse = async (analysisId) => {
     const maxAttempts = 30;
     const delay = 4000;
-
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await api.get(`/get/pdf/analysis/${analysisId}`, {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
-
         if (response.status === 200 && response.data.responce && response.data.responce.trim() !== "") {
           return response.data;
         }
@@ -258,10 +301,55 @@ function Dashboard() {
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-
     const errorMessage = t("analysisTimeout");
     toast.error(errorMessage, { theme: "dark", position: "top-center" });
     throw new Error(errorMessage);
+  };
+
+  const handleSendSupportMessage = async () => {
+    if (!supportMessage.trim()) {
+      toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    if (!isAuthenticated) {
+      setIsLoginModalVisible(true);
+      return;
+    }
+    if (!userId) {
+      toast.error(t("userIdNotFound"), { theme: "dark", position: "top-center" });
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await api.post(
+        "/support/send",
+        {
+          support_message: "",
+          user_id: userId,
+          user_message: supportMessage,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      if (response.status === 200) {
+        setSupportChatHistory((prev) => [
+          ...prev,
+          {
+            id: response.data.id || Date.now().toString(),
+            user_id: userId,
+            user_message: supportMessage,
+            support_message: "",
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        setSupportMessage("");
+        toast.success(t("supportMessageSent"), { theme: "dark", position: "top-center" });
+      }
+    } catch (error) {
+      console.error("Error sending support message:", error);
+      toast.error(t("failedToSendSupportMessage"), { theme: "dark", position: "top-center" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -272,12 +360,12 @@ function Dashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-   // Chat tanlanganda chaqiriladigan funksiya
-   const handleConversationSelect = (convId) => {
+  const handleConversationSelect = (convId) => {
     navigate(`/c/${convId}`);
     fetchChatHistory(convId);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
+
   useEffect(() => {
     if (isAuthenticated && pendingMessage) {
       setMessage(pendingMessage);
@@ -303,20 +391,15 @@ function Dashboard() {
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
     if (!chatContainer) return;
-
     const handleScroll = () => {
       const isAtBottom =
-        chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 50;
+        chatContainer.scrollHeight - chatContainer.scrollTop <= chatContainer.clientHeight + 50;
       isUserScrolling.current = !isAtBottom;
     };
-
     chatContainer.addEventListener("scroll", handleScroll);
-
     if (!isUserScrolling.current) {
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-
     return () => {
       chatContainer.removeEventListener("scroll", handleScroll);
     };
@@ -328,7 +411,6 @@ function Dashboard() {
       const fullText = newResponse.response;
       const request = newResponse.request;
       let index = 0;
-
       const type = () => {
         if (index < fullText.length) {
           const step = Math.min(4 + Math.floor(Math.random() * 2), fullText.length - index);
@@ -339,9 +421,7 @@ function Dashboard() {
         } else {
           setChatHistory((prev) =>
             prev.map((item) =>
-              item.request === request
-                ? { ...item, finalResponse: fullText, isLoading: false }
-                : item
+              item.request === request ? { ...item, finalResponse: fullText, isLoading: false } : item
             )
           );
           setNewResponse(null);
@@ -353,17 +433,19 @@ function Dashboard() {
 
   const fetchChatRooms = async () => {
     if (!isAuthenticated) return;
-
     try {
       setLoading(true);
       const response = await api.get(`/chat/user_id`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
-
       const { chat_rooms } = response.data;
-      setConversations(chat_rooms.map((room) => ({ id: room.id, title: room.title, created_at: room.created_at })));
+      setConversations(
+        chat_rooms.map((room) => ({
+          id: room.id,
+          title: room.title,
+          created_at: room.created_at,
+        }))
+      );
     } catch (error) {
       console.error("Error fetching chat rooms:", error, error.response?.data);
       if (error.response?.status === 401) {
@@ -375,17 +457,14 @@ function Dashboard() {
       setLoading(false);
     }
   };
+
   const fetchChatHistory = async (roomId) => {
     if (!isAuthenticated || !roomId) return;
-
     try {
       setLoading(true);
       const response = await api.get(`/chat/message?id=${roomId}`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
-
       const history = response.data.chats || [];
       const newChatHistory = history.map((chat) => ({
         request: chat.request,
@@ -393,7 +472,6 @@ function Dashboard() {
         finalResponse: chat.response || null,
         isLoading: false,
       }));
-
       setChatHistory(newChatHistory);
       setDisplayedResponse(
         history.reduce((acc, chat) => {
@@ -417,19 +495,16 @@ function Dashboard() {
 
   const createChatRoom = async (firstMessage) => {
     if (!isAuthenticated) return null;
-
     try {
       setLoading(true);
       const response = await api.post(
         "/chat/room/create",
-        { phone_number: user.phone_number, title: firstMessage?.substring(0, 50) || "New Chat" },
         {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+          phone_number: user.phone_number,
+          title: firstMessage?.substring(0, 50) || "New Chat",
+        },
+        { headers: { "Content-Type": "application/json" } }
       );
-
       const newRoomId = response.data.ID;
       await fetchChatRooms();
       return newRoomId;
@@ -484,20 +559,16 @@ function Dashboard() {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
-
     if (!isAuthenticated) {
       setIsLoginModalVisible(true);
       setPendingMessage(message);
       return;
     }
-
     if (loading) {
       toast.warn(t("operationInProgress"), { theme: "dark", position: "top-center" });
       return;
     }
-
     setLoading(true);
-
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
       currentChatRoomId = await createChatRoom(message);
@@ -514,7 +585,6 @@ function Dashboard() {
       navigate(`/c/${currentChatRoomId}`);
       await fetchChatHistory(currentChatRoomId);
     }
-
     let websocket = ws;
     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
       websocket = connectWebSocket(currentChatRoomId);
@@ -531,7 +601,6 @@ function Dashboard() {
         return;
       }
     }
-
     const newMessage = {
       request: message,
       initialAssistantMessage: null,
@@ -541,7 +610,6 @@ function Dashboard() {
     setChatHistory((prev) => [...prev, newMessage]);
     setStreamingResponse("");
     setMessage("");
-
     try {
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({ message: message, type: "request" }));
@@ -569,43 +637,41 @@ function Dashboard() {
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
     if (!chatContainer) return;
-
     let scrollTimeout;
-
     const handleScroll = () => {
       const isAtBottom =
-        chatContainer.scrollHeight - chatContainer.scrollTop <=
-        chatContainer.clientHeight + 50;
-
+        chatContainer.scrollHeight - chatContainer.scrollTop <= chatContainer.clientHeight + 50;
       isUserScrolling.current = !isAtBottom;
-
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         isUserScrolling.current = false;
       }, 2000);
     };
-
     chatContainer.addEventListener("scroll", handleScroll);
-
     return () => {
       chatContainer.removeEventListener("scroll", handleScroll);
       clearTimeout(scrollTimeout);
     };
   }, [chatHistory, streamingResponse, displayedResponse]);
 
+  // Auto-scroll for support chat
+  useEffect(() => {
+    const supportContainer = supportChatContainerRef.current;
+    if (!supportContainer) return;
+    supportContainer.scrollTop = supportContainer.scrollHeight;
+  }, [supportChatHistory]);
+
   const renderAssistantResponse = (responseText) => {
     if (!responseText) return null;
-
     const lines = responseText.split(/\n+/).filter((line) => line.trim());
-
     return lines.map((line, index) => {
       let formattedLine = line;
       formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
-      formattedLine = formattedLine.replace(/^## (.*)$/gm, '<h2>$1</h2>');
-      formattedLine = formattedLine.replace(/^### (.*)$/gm, '<h2>$1</h2>');
-      formattedLine = formattedLine.replace(/^#### (.*)$/gm, '<h2>$1</h2>');
-      formattedLine = formattedLine.replace(/^---$/gm, '<hr />');
+      formattedLine = formattedLine.replace(/^## (.*)$/gm, "<h2>$1</h2>");
+      formattedLine = formattedLine.replace(/^### (.*)$/gm, "<h2>$1</h2>");
+      formattedLine = formattedLine.replace(/^#### (.*)$/gm, "<h2>$1</h2>");
+      formattedLine = formattedLine.replace(/^---$/gm, "<hr />");
       const isListItem = line.trim().startsWith("- ") || line.trim().startsWith("* ");
       if (isListItem) {
         formattedLine = formattedLine.replace(/^[-*]\s+/, "");
@@ -615,7 +681,6 @@ function Dashboard() {
           </li>
         );
       }
-
       return (
         <p key={index} className="mb-1 text-gray-100 leading-relaxed lg:mb-2">
           <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
@@ -637,8 +702,9 @@ function Dashboard() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
+          className={`${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
           <div className="hidden md:block">
             <Header
@@ -664,10 +730,9 @@ function Dashboard() {
                 user={user}
                 navigate={navigate}
                 handleNewChat={handleNewChat}
-                onConversationSelect={handleConversationSelect} // YANGI QATOR
+                onConversationSelect={handleConversationSelect}
               />
             </div>
-
             {isAuthenticated && (
               <div
                 className="flex items-center justify-between p-2 bg-black/85 border-t border-gray-800 cursor-pointer"
@@ -710,25 +775,25 @@ function Dashboard() {
                 Premium
               </div>
             )}
-            {isAuthenticated && chatId && chatHistory.map((chat, index) => {
-              const isLastMessage = index === chatHistory.length - 1;
-              const responseText = displayedResponse[chat.request] || chat.finalResponse;
-              const finalResponseText = isLastMessage ? (responseText || streamingResponse) : responseText;
-
-              const finalResponse = renderAssistantResponse(finalResponseText);
-              const isLoading = isLastMessage && chat.isLoading;
-
-              return (
-                <ChatMessage
-                  key={index}
-                  message={chat.request}
-                  initialAssistantMessage={chat.initialAssistantMessage}
-                  finalResponse={finalResponse}
-                  isLoading={isLoading}
-                  isMobile={isMobile}
-                />
-              );
-            })}
+            {isAuthenticated &&
+              chatId &&
+              chatHistory.map((chat, index) => {
+                const isLastMessage = index === chatHistory.length - 1;
+                const responseText = displayedResponse[chat.request] || chat.finalResponse;
+                const finalResponseText = isLastMessage ? (responseText || streamingResponse) : responseText;
+                const finalResponse = renderAssistantResponse(finalResponseText);
+                const isLoading = isLastMessage && chat.isLoading;
+                return (
+                  <ChatMessage
+                    key={index}
+                    message={chat.request}
+                    initialAssistantMessage={chat.initialAssistantMessage}
+                    finalResponse={finalResponse}
+                    isLoading={isLoading}
+                    isMobile={isMobile}
+                  />
+                );
+              })}
           </div>
           <ChatInput
             message={message}
@@ -743,6 +808,99 @@ function Dashboard() {
           />
         </div>
       </div>
+
+      {/* Support Icon */}
+      <button
+        className="fixed bottom-[80px] right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-colors duration-200"
+        onClick={() => setIsSupportModalOpen(true)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5v-2a2 2 0 012-2h10a2 2 0 012 2v2h-4m-6 0h6m-7 4h8a2 2 0 002-2v-2H5v2a2 2 0 002 2z"
+          />
+        </svg>
+      </button>
+
+      {/* Support Modal */}
+      {isSupportModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-black/85 rounded-2xl border border-gray-700 p-4 w-full max-w-xs lg:max-w-md h-[80%] flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold lg:text-xl">{t("supportChat")}</h3>
+              <button
+                onClick={() => setIsSupportModalOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div
+              className="flex-1 overflow-y-auto mb-3 text-sm lg:text-base"
+              ref={supportChatContainerRef}
+            >
+              {supportChatHistory.length === 0 ? (
+                <p className="text-gray-400 text-center">{t("noSupportMessages")}</p>
+              ) : (
+                supportChatHistory.map((msg, index) => (
+                  <div
+                    key={msg.id || index}
+                    className={`mb-2 p-2 rounded-lg ${
+                      msg.user_id === userId ? "bg-gray-800 ml-auto" : "bg-blue-800 mr-auto"
+                    } max-w-[80%]`}
+                  >
+                    <p className="text-gray-200">
+                      {msg.user_id === userId ? msg.user_message : msg.support_message}
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      {new Date(msg.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={supportMessage}
+                onChange={(e) => setSupportMessage(e.target.value)}
+                placeholder={t("typeSupportMessage")}
+                className="flex-1 bg-gray-800 text-white p-2 rounded-l-lg border border-gray-700 focus:outline-none"
+                disabled={loading}
+              />
+              <button
+                onClick={handleSendSupportMessage}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg transition-colors duration-200"
+                disabled={loading}
+              >
+                {t("send")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(isSidebarOpen || isHistoryOpen) && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
