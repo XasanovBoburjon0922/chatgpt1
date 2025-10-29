@@ -342,7 +342,6 @@ function Dashboard() {
           },
         ]);
         setSupportMessage("");
-        toast.success(t("supportMessageSent"), { theme: "dark", position: "top-center" });
       }
     } catch (error) {
       console.error("Error sending support message:", error);
@@ -702,9 +701,8 @@ function Dashboard() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
+          className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 fixed lg:relative z-30 w-[80%] h-full bg-black/85 border-r border-gray-800 transition-transform duration-300 ease-in-out md:w-[460px]`}
         >
           <div className="hidden md:block">
             <Header
@@ -755,7 +753,7 @@ function Dashboard() {
         </div>
         <div className="flex-1 flex flex-col h-[90%]">
           <div
-            className="flex-1 overflow-y-auto px-[10px] lg:px-[40px] chat-container"
+            className="flex-1 overflow-y-auto mx-auto w-[80%] px-[10px] lg:px-[40px] chat-container"
             ref={chatContainerRef}
           >
             {!isAuthenticated && (
@@ -832,69 +830,97 @@ function Dashboard() {
 
       {/* Support Modal */}
       {isSupportModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-black/85 rounded-2xl border border-gray-700 p-4 w-full max-w-xs lg:max-w-md h-[80%] flex flex-col">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-bold lg:text-xl">{t("supportChat")}</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-700 p-5 w-full max-w-md h-[85vh] flex flex-col shadow-2xl">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{t("supportChat")}</h3>
+                  <p className="text-xs text-green-400">Online</p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsSupportModalOpen(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white transition"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
+
+            {/* Chat Messages */}
             <div
-              className="flex-1 overflow-y-auto mb-3 text-sm lg:text-base"
+              className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar"
               ref={supportChatContainerRef}
             >
               {supportChatHistory.length === 0 ? (
-                <p className="text-gray-400 text-center">{t("noSupportMessages")}</p>
+                <div className="text-center text-gray-500 mt-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm">{t("noSupportMessages")}</p>
+                  <p className="text-xs mt-1">{t("startConversation")}</p>
+                </div>
               ) : (
                 supportChatHistory.map((msg, index) => (
                   <div
                     key={msg.id || index}
-                    className={`mb-2 p-2 rounded-lg ${
-                      msg.user_id === userId ? "bg-gray-800 ml-auto" : "bg-blue-800 mr-auto"
-                    } max-w-[80%]`}
+                    className={`flex ${msg.user_message ? "justify-start" : "justify-end"}`}
                   >
-                    <p className="text-gray-200">
-                      {msg.user_id === userId ? msg.user_message : msg.support_message}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      {new Date(msg.created_at).toLocaleString()}
-                    </p>
+                    <div
+                      className={`max-w-[80%] p-3 rounded-2xl shadow-md transition-all duration-200 ${msg.user_message
+                          ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+                          : "bg-gradient-to-r from-gray-700 to-gray-800 text-gray-100"
+                        }`}
+                    >
+                      <p className="text-sm font-medium break-words">
+                        {msg.user_message || msg.support_message}
+                      </p>
+                      <p className="text-xs opacity-70 mt-1 text-right">
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
                   </div>
                 ))
               )}
             </div>
-            <div className="flex items-center">
+
+            {/* Input Area */}
+            <div className="flex items-center mt-4 gap-2">
               <input
                 type="text"
                 value={supportMessage}
                 onChange={(e) => setSupportMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendSupportMessage()}
                 placeholder={t("typeSupportMessage")}
-                className="flex-1 bg-gray-800 text-white p-2 rounded-l-lg border border-gray-700 focus:outline-none"
+                className="flex-1 bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 transition placeholder-gray-500 text-sm"
                 disabled={loading}
               />
               <button
                 onClick={handleSendSupportMessage}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg transition-colors duration-200"
-                disabled={loading}
+                disabled={loading || !supportMessage.trim()}
+                className={`p-3 rounded-xl transition-all duration-200 ${supportMessage.trim() && !loading
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                    : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  }`}
               >
-                {t("send")}
+                {loading ? (
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
