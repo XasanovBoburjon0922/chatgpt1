@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import html2pdf from "html2pdf.js";
+import {api} from "../api/api"
 
 const ApplicationFormPage = () => {
     const [requiredFields, setRequiredFields] = useState([]);
@@ -26,8 +27,8 @@ const ApplicationFormPage = () => {
                 setError(null);
                 try {
                     // Fetch application required fields
-                    const fieldsResponse = await axios.get(
-                        `https://imzo-ai.uzjoylar.uz/application-items?pdf_category_item_id=${pdfCategoryID}`
+                    const fieldsResponse = await api.get(
+                        `/application-items?pdf_category_item_id=${pdfCategoryID}`
                     );
                     const fields = fieldsResponse.data.application_requireds || [];
                     setRequiredFields(fields);
@@ -40,8 +41,8 @@ const ApplicationFormPage = () => {
                     setFormValues(initialValues);
 
                     // Fetch HTML template
-                    const htmlResponse = await axios.get(
-                        `https://imzo-ai.uzjoylar.uz/html-download?pdf_category_item_id=${pdfCategoryID}`
+                    const htmlResponse = await api.get(
+                        `/html-download?pdf_category_item_id=${pdfCategoryID}`
                     );
                     setHtmlTemplate(htmlResponse.data);
                     setPreviewHtml(htmlResponse.data); // Initial preview without replacements
