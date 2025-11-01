@@ -14,25 +14,12 @@ function VerifyPage() {
   const [isVerified, setIsVerified] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
 
   const phoneNumberWithFormat = location.state?.phone;
   const phoneNumber = phoneNumberWithFormat
     ? `+${phoneNumberWithFormat.replace(/[^\d]/g, "")}`
     : null;
-
-  // Redirect if already authenticated or no phone number
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/");
-    } else if (!phoneNumberWithFormat) {
-      toast.error("Telefon raqami topilmadi. Iltimos, qayta login qiling.", {
-        theme: "dark",
-        position: "top-center",
-      });
-      navigate("/login");
-    }
-  }, [isAuthenticated, phoneNumberWithFormat, navigate]);
 
   useEffect(() => {
     let interval;
@@ -87,7 +74,7 @@ function VerifyPage() {
     } finally {
       setIsVerifying(false);
     }
-  }, [code, isVerifying, isVerified, phoneNumber, login, navigate]);
+  }, [code, isVerifying, isVerified, phoneNumber,login, navigate]);
 
   useEffect(() => {
     const enteredCode = code.join("");
