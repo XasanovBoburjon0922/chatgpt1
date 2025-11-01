@@ -40,7 +40,11 @@ const ApplicationFormPage = () => {
                 setFormValues(initialValues);
 
                 const htmlRes = await api.get(`/html-download?pdf_category_item_id=${pdfCategoryID}`);
-                const template = htmlRes.data || "";
+                let template = htmlRes.data || "";
+                
+                // {{.numberofthecontract}} -> {{numberofthecontract}} ga o'zgartirish
+                template = template.replace(/\{\{\.([^\}]+)\}\}/g, '$1');
+                
                 setHtmlTemplate(template);
                 setPreviewHtml(template);
             } catch (err) {
@@ -64,7 +68,8 @@ const ApplicationFormPage = () => {
         if (htmlTemplate && Object.keys(formValues).length > 0) {
             let updated = htmlTemplate;
             Object.entries(formValues).forEach(([key, value]) => {
-                const regex = new RegExp(`{{.${key}}}`, "g");
+                // {{numberofthecontract}} -> value ga almashtirish
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
                 updated = updated.replace(regex, value || "");
             });
             setPreviewHtml(updated);
