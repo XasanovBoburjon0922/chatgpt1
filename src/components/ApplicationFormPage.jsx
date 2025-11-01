@@ -187,12 +187,6 @@ const ApplicationFormPage = () => {
                             >
                                 PDF yuklab olish
                             </button>
-                            <button
-                                onClick={() => navigate(`/dashboard/pdf-categories/template/${pdfCategoryID}`)}
-                                className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"
-                            >
-                                Shablonni tahrirlash
-                            </button>
                         </div>
                     </div>
                 </div>
