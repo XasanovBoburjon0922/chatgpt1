@@ -493,24 +493,36 @@ function Dashboard() {
   };
 
   const createChatRoom = async (firstMessage) => {
-    if (!isAuthenticated) return null;
+    if (!isAuthenticated || !userId) {
+      toast.error(t("loginRequired"), { theme: "dark", position: "top-center" });
+      return null;
+    }
+  
     try {
       setLoading(true);
+  
       const response = await api.post(
         "/chat/room/create",
         {
-          phone_number: user.phone_number,
-          title: firstMessage?.substring(0, 50) || "New Chat",
+          user_id: userId, // user_id ni /users/me dan olingan ID bilan yuborish
         },
-        { headers: { "Content-Type": "application/json" } }
+        {
+          headers: { "Content-Type": "application/json" },
+        }
       );
-      const newRoomId = response.data.ID;
-      await fetchChatRooms();
-      return newRoomId;
+  
+      if (response.status === 200 || response.status === 201) {
+        const newRoomId = response.data.ID;
+        await fetchChatRooms(); // Yangi chat room paydo bo'lgani uchun sidebar yangilansin
+        return newRoomId;
+      }
     } catch (error) {
       console.error("Error creating chat room:", error);
+  
       if (error.response?.status === 401) {
         navigate("/login");
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message, { theme: "dark", position: "top-center" });
       } else {
         toast.error(t("failedtocreatechatroom"), { theme: "dark", position: "top-center" });
       }

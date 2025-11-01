@@ -109,12 +109,8 @@ const SidebarContent = memo(
         <div className="mb-3 lg:mb-4">
           <button
             onClick={handleNewChat}
-            disabled={loading || !isAuthenticated || !user?.full_name}
-            className={`w-full bg-white text-black font-medium py-2 rounded-xl transition-all hover:bg-gray-200 text-sm lg:py-3 ${
-              loading || !isAuthenticated || !user?.full_name
-                ? "opacity-50 cursor-not-allowed"
-                : ""
-            }`}
+            className={`w-full bg-white text-black font-medium py-2 rounded-xl transition-all hover:bg-gray-200 text-sm lg:py-3
+            `}
           >
             {t("newChat")}
           </button>
