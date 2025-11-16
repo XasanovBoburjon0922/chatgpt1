@@ -19,6 +19,7 @@ function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/c/:chatId" element={<DashboardPage />} />
         <Route path="/categories" element={<DashboardPage />} />
+        <Route path="/applications" element={<DashboardPage />} /> {/* Bu ishlaydi */}
         <Route path="/about" element={<About />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/document" element={<ApplicationFormPage />} />

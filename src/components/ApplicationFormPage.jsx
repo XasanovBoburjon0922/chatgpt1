@@ -1,151 +1,224 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import html2pdf from "html2pdf.js";
-import { api } from "../api/api";
+import React, { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { api } from "../api/api"
+import html2pdf from "html2pdf.js"
+import { FileTextOutlined } from "@ant-design/icons"
 
 const ApplicationFormPage = () => {
-    const [requiredFields, setRequiredFields] = useState([]);
-    const [htmlTemplate, setHtmlTemplate] = useState("");
-    const [formValues, setFormValues] = useState({});
-    const [previewHtml, setPreviewHtml] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [requiredFields, setRequiredFields] = useState([])
+    const [htmlTemplate, setHtmlTemplate] = useState("")
+    const [formValues, setFormValues] = useState({})
+    const [previewHtml, setPreviewHtml] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
+    const [userId, setUserId] = useState(null) // Yangi: Foydalanuvchi ID
+    const [uploading, setUploading] = useState(false) // Yuklash holati
 
-    const location = useLocation();
-    const navigate = useNavigate();
-    const searchParams = new URLSearchParams(location.search);
-    const pdfCategoryID = searchParams.get("pdfCategoryID");
+    const location = useLocation()
+    const navigate = useNavigate()
+    const searchParams = new URLSearchParams(location.search)
+    const pdfCategoryID = searchParams.get("pdfCategoryID")
 
-    // Fetch data
+    // -------------------------------------------------
+    // 1. Foydalanuvchi ma'lumotlarini olish (/users/me)
+    // -------------------------------------------------
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await api.get("/users/me")
+                setUserId(res.data.id)
+            } catch (err) {
+                console.error("Foydalanuvchi ma'lumotlarini olishda xato:", err)
+                setError("Foydalanuvchi ma'lumotlarini yuklashda xatolik")
+            }
+        }
+        fetchUser()
+    }, [])
+
+    // -------------------------------------------------
+    // 2. Ma'lumotlarni olish (fields + HTML template)
+    // -------------------------------------------------
     useEffect(() => {
         if (!pdfCategoryID) {
-            setError("PDF kategoriyasi tanlanmagan");
-            return;
+            setError("No PDF category selected")
+            return
         }
 
         const fetchData = async () => {
-            setLoading(true);
-            setError(null);
+            setLoading(true)
+            setError(null)
             try {
-                const fieldsRes = await api.get(`/application-items?pdf_category_item_id=${pdfCategoryID}`);
-                const fields = fieldsRes.data.application_requireds || [];
-                setRequiredFields(fields);
+                const fieldsRes = await api.get(`/application-items?pdf_category_item_id=${pdfCategoryID}`)
+                const fields = fieldsRes.data.application_requireds || []
+                setRequiredFields(fields)
 
                 const initialValues = fields.reduce((acc, field) => {
-                    acc[field.id] = "";
-                    return acc;
-                }, {});
-                setFormValues(initialValues);
+                    acc[field.id] = ""
+                    return acc
+                }, {})
+                setFormValues(initialValues)
 
-                const htmlRes = await api.get(`/html-download?pdf_category_item_id=${pdfCategoryID}`);
-                let template = htmlRes.data || "";
-                
-                // {{.numberofthecontract}} -> {{numberofthecontract}} ga o'zgartirish
-                template = template.replace(/\{\{\.([^\}]+)\}\}/g, '$1');
-                
-                setHtmlTemplate(template);
-                setPreviewHtml(template);
+                const htmlRes = await api.get(`/html-download?pdf_category_item_id=${pdfCategoryID}`)
+                const template = htmlRes.data || ""
+                setHtmlTemplate(template)
+                setPreviewHtml(template)
             } catch (err) {
                 if (err.response?.status === 404) {
-                    navigate(`/dashboard/pdf-categories/template/${pdfCategoryID}?create=true`);
+                    navigate(`/dashboard/pdf-categories/template/${pdfCategoryID}?create=true`)
                 } else if (err.response?.status === 401) {
-                    navigate("/");
+                    setError("Unauthorized: Please log in again")
+                    navigate("/")
                 } else {
-                    setError("Ma'lumotlarni yuklashda xatolik");
+                    setError("Ma'lumotlarni yuklashda xatolik yuz berdi")
                 }
-                console.error(err);
+                console.error(err)
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
-        };
-        fetchData();
-    }, [pdfCategoryID, navigate]);
+        }
 
-    // Update preview
+        fetchData()
+    }, [pdfCategoryID, navigate])
+
+    // -------------------------------------------------
+    // 3. Preview yangilash
+    // -------------------------------------------------
     useEffect(() => {
         if (htmlTemplate && Object.keys(formValues).length > 0) {
-            let updated = htmlTemplate;
+            let updated = htmlTemplate
             Object.entries(formValues).forEach(([key, value]) => {
-                // {{numberofthecontract}} -> value ga almashtirish
-                const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-                updated = updated.replace(regex, value || "");
-            });
-            setPreviewHtml(updated);
+                const regex = new RegExp(`{{.${key}}}`, "g")
+                updated = updated.replace(regex, value || "")
+            })
+            setPreviewHtml(updated)
         }
-    }, [formValues, htmlTemplate]);
+    }, [formValues, htmlTemplate])
 
+    // -------------------------------------------------
+    // 4. Input o‘zgarishi
+    // -------------------------------------------------
     const handleInputChange = (fieldId, value) => {
-        setFormValues(prev => ({ ...prev, [fieldId]: value }));
-    };
+        setFormValues(prev => ({ ...prev, [fieldId]: value }))
+    }
 
-    const handleBack = () => navigate(-1);
+    // -------------------------------------------------
+    // 5. Orqaga qaytish
+    // -------------------------------------------------
+    const handleBack = () => {
+        navigate(-1)
+    }
 
-    const handleDownload = () => {
+    // -------------------------------------------------
+    // 6. PDF yaratish va API ga yuklash (api orqali)
+    // -------------------------------------------------
+    const handleDownload = async () => {
+        if (!userId) {
+            alert("Foydalanuvchi ma'lumotlari yuklanmagan.")
+            return
+        }
+
+        setUploading(true)
         try {
             const pdfHtml = `
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <meta charset="utf-8">
-                    <title>Document_${pdfCategoryID}</title>
-                    <style>
-                      body { font-family: 'Times New Roman', serif; margin: 20mm; line-height: 1.6; font-size: 12pt; }
-                      @page { size: A4; margin: 0; }
-                      table, img { page-break-inside: avoid; }
-                      .page-break { page-break-before: always; }
-                      p, div, span { margin: 0; padding: 0; }
-                    </style>
-                  </head>
-                  <body>${previewHtml}</body>
-                </html>
-            `;
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Document_${pdfCategoryID}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              table, img, div { page-break-inside: avoid; }
+            </style>
+          </head>
+          <body>${previewHtml}</body>
+        </html>
+      `
 
-            const element = document.createElement("div");
-            element.innerHTML = pdfHtml;
+            const element = document.createElement("div")
+            element.innerHTML = pdfHtml
 
             const opt = {
-                margin: [15, 10, 15, 10],
-                filename: `Ariza_${pdfCategoryID}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                margin: 10,
+                filename: `document_${pdfCategoryID}_${new Date().toISOString().slice(0, 10)}.pdf`,
                 image: { type: "jpeg", quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-            };
+                pagebreak: { mode: ["avoid-all", "css", "legacy"], avoid: "table" },
+            }
 
-            html2pdf().from(element).set(opt).save();
+            // PDF ni blob sifatida yaratish
+            const pdf = await html2pdf().from(element).set(opt).outputPdf('blob')
+
+            // Fayl nomi
+            const fileName = `document_${pdfCategoryID}_${new Date().toISOString().slice(0, 10)}.pdf`
+            const file = new File([pdf], fileName, { type: "application/pdf" })
+
+            // FormData yaratish
+            const formData = new FormData()
+            formData.append("file", file)
+
+            // API orqali yuklash (baseURL avtomatik qo'shiladi)
+            await api.post(
+                `/application-user/create`,
+                formData,
+                {
+                    params: {
+                        user_id: userId,
+                        name: fileName
+                    },
+                    headers: {
+                        'accept': 'application/json',
+                        // Content-Type ni qo'ymang — browser avto qo'yadi
+                    }
+                }
+            )
+
+            alert("PDF muvaffaqiyatli yuklandi!")
+
+            // Mahalliy yuklab olish
+            const url = window.URL.createObjectURL(pdf)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = fileName
+            a.click()
+            window.URL.revokeObjectURL(url)
+
         } catch (err) {
-            console.error("PDF xato:", err);
-            alert("PDF yaratishda xato yuz berdi.");
+            console.error("PDF yuklashda xatolik:", err)
+            if (err.response?.status === 401) {
+                alert("Sessiya tugadi. Iltimos, qayta kiring.")
+                navigate("/")
+            } else {
+                alert("PDF yaratish yoki yuklashda xatolik yuz berdi.")
+            }
+        } finally {
+            setUploading(false)
         }
-    };
+    }
 
+    // -------------------------------------------------
+    // 7. UI
+    // -------------------------------------------------
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="text-lg font-medium">Yuklanmoqda...</div>
+            <div className="flex justify-center items-center h-screen">
+                Yuklanmoqda...
             </div>
-        );
+        )
     }
 
     if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-                <p className="text-red-600 text-center font-medium">{error}</p>
-                <button onClick={handleBack} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                    Orqaga
-                </button>
-            </div>
-        );
+        return <div className="text-red-500 text-center p-6">{error}</div>
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="flex w-full h-screen bg-gray-100">
             {/* Back Button */}
             <button
                 onClick={handleBack}
-                className="fixed top-4 left-4 z-50 p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all"
-                aria-label="Orqaga"
+                className="absolute top-4 left-4 p-2 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors z-10"
             >
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -153,76 +226,67 @@ const ApplicationFormPage = () => {
             </button>
 
             {/* Main Content */}
-            <div className="flex-1 p-0 pt-16 md:p-6 lg:p-8 mx-auto w-full">
-                <div className="grid grid-cols-1 lg:grid-cols-2 w-full gap-6 h-full">
-                    {/* Form Fields */}
-                    <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 overflow-y-auto max-h-[80vh] lg:max-h-full">
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-5">Ariza Maydonlari</h2>
-                        {requiredFields.length > 0 ? (
-                            <div className="space-y-5">
-                                {requiredFields.map((field) => (
-                                    <div key={field.id}>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                            {field.text}
-                                        </label>
-
-                                        {/* DATETIME uchun datetime-local input */}
-                                        {field.type === "datetime" ? (
-                                            <input
-                                                type="date"
-                                                value={formValues[field.id] || ""}
-                                                onChange={(e) => handleInputChange(field.id, e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
-                                            />
-                                        ) : field.type === "date" ? (
-                                            <input
-                                                type="date"
-                                                value={formValues[field.id] || ""}
-                                                onChange={(e) => handleInputChange(field.id, e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
-                                            />
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                value={formValues[field.id] || ""}
-                                                onChange={(e) => handleInputChange(field.id, e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
-                                                placeholder={field.text}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
+            <div className="flex w-full ml-12 mt-12">
+                {/* Form Fields */}
+                <div className="w-1/2 p-6 bg-white overflow-y-auto">
+                    <h2 className="text-xl font-bold mb-4">Ariza Maydonlari</h2>
+                    {requiredFields.length > 0 ? (
+                        requiredFields.map(field => (
+                            <div key={field.id} className="mb-4">
+                                <label className="block text-sm font-medium mb-1">{field.text}</label>
+                                {field.type === "datetime" || field.type === "date" ? (
+                                    <input
+                                        type="date"
+                                        value={formValues[field.id] || ""}
+                                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+                                    />
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={formValues[field.id] || ""}
+                                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+                                        placeholder={field.text}
+                                    />
+                                )}
                             </div>
-                        ) : (
-                            <p className="text-gray-500 text-center py-8">Maydonlar mavjud emas.</p>
-                        )}
-                    </div>
+                        ))
+                    ) : (
+                        <p className="text-gray-500">Iltimos, element tanlang.</p>
+                    )}
+                </div>
 
-                    {/* Preview + Download */}
-                    <div className="bg-gray-100 rounded-xl shadow-sm p-0 md:p-6 flex flex-col">
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-5 px-6">Hujjat Ko'rinishi</h2>
-                        <div className="flex-1 bg-white rounded-lg border border-gray-200 p-4 md:p-6 overflow-auto shadow-inner">
-                            <div
-                                dangerouslySetInnerHTML={{ __html: previewHtml }}
-                                className="prose prose-sm max-w-none"
-                            />
-                        </div>
-                        <div className="mt-5 px-6 pb-2">
-                            <button
-                                onClick={handleDownload}
-                                className="w-full px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                PDF yuklab olish
-                            </button>
-                        </div>
+                {/* Document Preview */}
+                <div className="w-1/2 p-6 bg-gray-50 overflow-y-auto">
+                    <h2 className="text-xl font-bold mb-4">Hujjat Ko'rinishi</h2>
+                    <div className="bg-white p-4 border border-gray-300 rounded shadow">
+                        <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                    </div>
+                    <div className="mt-6 flex justify-end gap-3">
+                        <button
+                            onClick={handleDownload}
+                            disabled={uploading || !userId}
+                            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2
+                ${uploading || !userId
+                                    ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                }`}
+                        >
+                            {uploading ? (
+                                <>Yuklanmoqda...</>
+                            ) : (
+                                <>
+                                    <FileTextOutlined />
+                                    PDF yuklash va saqlash
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default ApplicationFormPage;
+export default ApplicationFormPage

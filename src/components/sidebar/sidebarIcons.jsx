@@ -6,11 +6,12 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
   const { t } = useTranslation();
   const location = useLocation();
 
-  // Determine active tab based on the current route
+  // Active tab aniqlash
   const getActiveTab = () => {
     if (location.pathname === '/about') return 'about';
     if (location.pathname.startsWith('/c/') || location.pathname === '/') return 'history';
     if (location.pathname === '/categories') return 'categories';
+    if (location.pathname === '/applications') return 'applications'; // YANGI
     return activeTab;
   };
 
@@ -18,7 +19,7 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
 
   return (
     <div className="flex flex-col items-center py-2 border-b border-gray-800 lg:py-4">
-      {/* History Button */}
+      {/* History */}
       <button
         onClick={() => {
           setActiveTab('history');
@@ -31,22 +32,13 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
         }`}
         title={t("history")}
       >
-        <svg
-          className="w-5 h-5 lg:w-6 lg:h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </button>
 
-      {/* Categories Button */}
+      {/* Categories */}
       <button
         onClick={() => {
           setActiveTab('categories');
@@ -59,22 +51,31 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
         }`}
         title={t("categories")}
       >
-        <svg
-          className="w-5 h-5 lg:w-6 lg:h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
 
-      {/* About Button */}
+      {/* Mening Arizalarim */}
+      <button
+        onClick={() => {
+          setActiveTab('applications');
+          navigate('/applications');
+        }}
+        className={`p-2 rounded-lg mb-1 transition-colors duration-200 lg:p-3 lg:mb-2 ${
+          currentTab === 'applications'
+            ? 'bg-gray-900/85 text-white'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900/65'
+        }`}
+        title={t("myApplications")}
+      >
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 12h6m-6-4h6m-6 8h6m-3-8V4a1 1 0 011-1h4a1 1 0 011 1v3m-1 0h3a1 1 0 011 1v10a1 1 0 01-1 1h-8a1 1 0 01-1-1V8a1 1 0 011-1h3" />
+        </svg>
+      </button>
+
+      {/* About */}
       <button
         onClick={() => navigate('/about')}
         className={`p-2 rounded-lg transition-colors duration-200 lg:p-3 ${
@@ -84,18 +85,9 @@ const SidebarIcons = ({ setActiveTab, activeTab, navigate }) => {
         }`}
         title={t("about")}
       >
-        <svg
-          className="w-5 h-5 lg:w-6 lg:h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
+        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </button>
     </div>
