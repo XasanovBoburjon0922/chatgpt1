@@ -565,14 +565,14 @@ function Dashboard() {
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   };
 
-  const handleSend = async () => {
-    if (!message.trim()) {
+  const handleSend = async (msg, mode) => { // Mode ni parametr sifatida qabul qilish
+    if (!msg.trim()) {
       toast.error(t("messageEmpty"), { theme: "dark", position: "top-center" });
       return;
     }
     if (!isAuthenticated) {
       setIsLoginModalVisible(true);
-      setPendingMessage(message);
+      setPendingMessage(msg);
       return;
     }
     if (loading) {
@@ -582,7 +582,7 @@ function Dashboard() {
     setLoading(true);
     let currentChatRoomId = chatId;
     if (!currentChatRoomId) {
-      currentChatRoomId = await createChatRoom(message);
+      currentChatRoomId = await createChatRoom(msg);
       if (!currentChatRoomId) {
         await fetchChatRooms();
         if (conversations.length > 0) {
@@ -613,7 +613,7 @@ function Dashboard() {
       }
     }
     const newMessage = {
-      request: message,
+      request: msg,
       initialAssistantMessage: null,
       finalResponse: null,
       isLoading: true,
@@ -623,7 +623,7 @@ function Dashboard() {
     setMessage("");
     try {
       if (websocket && websocket.readyState === WebSocket.OPEN) {
-        websocket.send(JSON.stringify({ message: message, type: "request" }));
+        websocket.send(JSON.stringify({ message: msg, mode: mode, type: "request" })); // Mode ni qo'shish
       } else {
         throw new Error(t("websocketNotConnected"));
       }

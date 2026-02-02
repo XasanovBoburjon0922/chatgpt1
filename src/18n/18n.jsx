@@ -7,6 +7,28 @@ i18n.use(initReactI18next).init({
   resources: {
     uz: {
       translation: {
+        "modes": {
+          "fast": {
+            "label": "Fast",
+            "description": "Tezkor savol javob"
+          },
+          "deep": {
+            "label": "Deep",
+            "description": "Chuqur tahlil"
+          },
+          "document": {
+            "label": "Hujjatlar",
+            "description": "Hujjatlar bo'yicha"
+          },
+          "web": {
+            "label": "Web",
+            "description": "Web qidiruv"
+          }
+        },
+        "typeMessage": "Xabar yozing...",
+        "askAboutDocument": "Hujjat haqida so'rang...",
+        "invalidFileType": "Noto'g'ri fayl turi. Faqat PDF, TXT, DOC, DOCX fayllarini yuklang.",
+        "loginToChat": "Suhbat uchun tizimga kiring",
         chatgpt: "Imzo AI",
         login: "Kirish",
         today: "Bugun",
@@ -77,6 +99,28 @@ i18n.use(initReactI18next).init({
     },
     ru: {
       translation: {
+        "modes": {
+          "fast": {
+            "label": "Быстрый",
+            "description": "Быстрый вопрос-ответ"
+          },
+          "deep": {
+            "label": "Глубокий",
+            "description": "Глубокий анализ"
+          },
+          "document": {
+            "label": "Документы",
+            "description": "По документам"
+          },
+          "web": {
+            "label": "Веб",
+            "description": "Веб-поиск"
+          }
+        },
+        "typeMessage": "Введите сообщение...",
+        "askAboutDocument": "Задайте вопрос о документе...",
+        "invalidFileType": "Неверный тип файла. Загружайте только PDF, TXT, DOC, DOCX файлы.",
+        "loginToChat": "Войдите в систему для общения",
         chatgpt: "Imzo AI",
         login: "Вход",
         newChat: "Новый чат",
